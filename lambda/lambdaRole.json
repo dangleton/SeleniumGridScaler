@@ -1,0 +1,81 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Creates a Selenium Grid Hub.",
+
+  "Parameters" : {
+
+    "RoleName": {
+      "Description" : "Unique Name for this role. e.g. CloudformationLambda.",
+      "Type": "String",
+      "Default": "CloudformationLambda",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    },
+    
+    "CostCenter": {
+      "Description" : "The Cost center to charge these resourecs to.",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default": "CAS",
+      "AllowedPattern" : "[\\x20-\\x7E]*",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    },
+
+
+    "AdminContact": {
+      "Description" : "The admin contact.",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "Denis Angleton",
+      "AllowedPattern" : "[\\x20-\\x7E]*",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    }
+  
+     
+  },
+ 
+  "Resources" : {
+ 
+    
+    "Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "ManagedPolicyArns": [
+            "arn:aws:iam::aws:policy/AmazonS3FullAccess", "arn:aws:iam::aws:policy/AmazonEC2FullAccess",
+            "arn:aws:iam::aws:policy/AmazonEC2FullAccess", "arn:aws:iam::aws:policy/AmazonEC2FullAccess"],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": ["lambda.amazonaws.com"]},
+              "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Action": ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"],
+                "Resource": "arn:aws:logs:*:*:*"
+            }]
+          }
+        }]
+      }
+    }    
+  
+  },
+
+
+  "Outputs" : {
+   
+    "RoleID" : {
+      "Description" : "instance role",
+      "Value" : { "Ref" : "Role" }
+    }
+  }
+}

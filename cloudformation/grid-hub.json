@@ -19,7 +19,7 @@
       "MinLength": "1",
       "MaxLength": "255",
       "AllowedPattern" : "[\\x20-\\x7E]*",
-      "Default" : "Tank",
+      "Default" : "babel",
       "ConstraintDescription" : "can contain only ASCII characters."
     },
    
@@ -63,7 +63,7 @@
       "Type": "AWS::EC2::Subnet::Id",
       "MinLength": "1",
       "MaxLength": "255",
-      "Default" : "subnet-28d2f74d"
+      "Default" : "subnet-93d48cf7"
     },
 
     "FallbackSubnetId": {
@@ -71,7 +71,7 @@
       "Type": "AWS::EC2::Subnet::Id",
       "MinLength": "1",
       "MaxLength": "255",
-      "Default" : "subnet-bb5328cc"
+      "Default" : "subnet-68acdc1e"
     },
     
     "Arch": {
@@ -86,7 +86,7 @@
       "Type": "AWS::EC2::VPC::Id",
       "MinLength": "1",
       "MaxLength": "255",
-      "Default" : "vpc-63eabe06"
+      "Default" : "vpc-cbd7e2af"
     }
      
   },
