@@ -24,6 +24,7 @@ import org.openqa.grid.common.SeleniumProtocol;
 import org.openqa.grid.internal.ProxySet;
 import org.openqa.grid.internal.TestSlot;
 import org.openqa.grid.internal.utils.CapabilityMatcher;
+import org.openqa.grid.internal.utils.configuration.GridNodeConfiguration;
 import org.openqa.selenium.Platform;
 import org.openqa.selenium.remote.CapabilityType;
 
@@ -39,7 +40,8 @@ public class AutomationRunContextTest extends BaseTest {
     @Test
     // Tests that an old run gets cleaned up (removed)
     public void testOldRun() {
-        AutomationRunRequest oldRequest = new AutomationRunRequest("uuid",10,"firefox","10", Platform.LINUX,AutomationUtils.modifyDate(new Date(),-5, Calendar.MINUTE));
+        AutomationRunRequest oldRequest = new AutomationRunRequest("uuid", 10, "firefox", "10", Platform.LINUX,
+                AutomationUtils.modifyDate(new Date(), -5, Calendar.MINUTE));
         AutomationRunContext context = AutomationContext.getContext();
         context.addRun(oldRequest);
 
@@ -47,13 +49,14 @@ public class AutomationRunContextTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         proxySet.add(new MockRemoteProxy());
         context.cleanUpRunRequests(proxySet);
-        Assert.assertFalse("Run request should no longer exist as it should have been removed", context.hasRun(oldRequest.getUuid()));
+        Assert.assertFalse("Run request should no longer exist as it should have been removed",
+                context.hasRun(oldRequest.getUuid()));
     }
 
     @Test
     // Tests that a new run does not get cleaned up (removed)
     public void testNewRun() {
-        AutomationRunRequest oldRequest = new AutomationRunRequest("uuid",10,"firefox");
+        AutomationRunRequest oldRequest = new AutomationRunRequest("uuid", 10, "firefox");
         AutomationRunContext context = AutomationContext.getContext();
         context.addRun(oldRequest);
 
@@ -61,44 +64,48 @@ public class AutomationRunContextTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         proxySet.add(new MockRemoteProxy());
         context.cleanUpRunRequests(proxySet);
-        Assert.assertTrue("Run request should still exist as the run was new enough", context.hasRun(oldRequest.getUuid()));
+        Assert.assertTrue("Run request should still exist as the run was new enough",
+                context.hasRun(oldRequest.getUuid()));
     }
 
     @Test
     // Tests that a new run does not get cleaned up (removed)
     public void testNewRunIE() {
-        AutomationRunRequest oldRequest = new AutomationRunRequest("uuid",10,"internetexplorer","10",Platform.LINUX,AutomationUtils.modifyDate(new Date(),-7, Calendar.MINUTE));
+        AutomationRunRequest oldRequest = new AutomationRunRequest("uuid", 10, "internetexplorer", "10", Platform.LINUX,
+                AutomationUtils.modifyDate(new Date(), -7, Calendar.MINUTE));
         AutomationRunContext context = AutomationContext.getContext();
         context.addRun(oldRequest);
-
 
         Assert.assertTrue("Run should exist", context.hasRun(oldRequest.getUuid()));
         ProxySet proxySet = new ProxySet(false);
         proxySet.add(new MockRemoteProxy());
         context.cleanUpRunRequests(proxySet);
-        Assert.assertTrue("Run request should still exist as the run was new enough", context.hasRun(oldRequest.getUuid()));
+        Assert.assertTrue("Run request should still exist as the run was new enough",
+                context.hasRun(oldRequest.getUuid()));
     }
 
     @Test
     // Tests that a new run does not get cleaned up (removed)
     public void testOldRunIE() {
-        AutomationRunRequest oldRequest = new AutomationRunRequest("uuid",10,"internetexplorer","10",Platform.LINUX,AutomationUtils.modifyDate(new Date(),-15, Calendar.MINUTE));
+        AutomationRunRequest oldRequest = new AutomationRunRequest("uuid", 10, "internetexplorer", "10", Platform.LINUX,
+                AutomationUtils.modifyDate(new Date(), -15, Calendar.MINUTE));
         AutomationRunContext context = AutomationContext.getContext();
         context.addRun(oldRequest);
-
 
         Assert.assertTrue("Run should exist", context.hasRun(oldRequest.getUuid()));
         ProxySet proxySet = new ProxySet(false);
         proxySet.add(new MockRemoteProxy());
         context.cleanUpRunRequests(proxySet);
-        Assert.assertFalse("Run request should no longer exist as it should have been removed", context.hasRun(oldRequest.getUuid()));
+        Assert.assertFalse("Run request should no longer exist as it should have been removed",
+                context.hasRun(oldRequest.getUuid()));
     }
 
     @Test
     // Tests that a run with slots does not get removed
     public void testActiveSession() {
         String uuid = "uuid";
-        AutomationRunRequest request = new AutomationRunRequest(uuid,10,"firefox","10",Platform.LINUX,AutomationUtils.modifyDate(new Date(),-1, Calendar.HOUR));
+        AutomationRunRequest request = new AutomationRunRequest(uuid, 10, "firefox", "10", Platform.LINUX,
+                AutomationUtils.modifyDate(new Date(), -1, Calendar.HOUR));
         AutomationRunContext context = AutomationContext.getContext();
         context.addRun(request);
 
@@ -108,24 +115,28 @@ public class AutomationRunContextTest extends BaseTest {
         CapabilityMatcher matcher = new AutomationCapabilityMatcher();
         proxy.setCapabilityMatcher(matcher);
         proxySet.add(proxy);
-        Map<String,Object> config = new HashMap<>();
-        config.put(AutomationConstants.UUID,uuid);
+        Map<String, Object> capabilities = new HashMap<>();
+        GridNodeConfiguration config = new GridNodeConfiguration();
+
+        config.custom.put(AutomationConstants.UUID, uuid);
         proxy.setConfig(config);
         List<TestSlot> testSlots = new ArrayList<>();
-        TestSlot testSlot = new TestSlot(proxy,null,null,config);
+        TestSlot testSlot = new TestSlot(proxy, null, null, capabilities);
         proxy.setTestSlots(testSlots);
-        testSlot.getNewSession(config);
+        testSlot.getNewSession(capabilities);
         testSlots.add(testSlot);
         proxySet.add(proxy);
         context.cleanUpRunRequests(proxySet);
-        Assert.assertTrue("Run request should still exist as there were active sessions", context.hasRun(request.getUuid()));
+        Assert.assertTrue("Run request should still exist as there were active sessions",
+                context.hasRun(request.getUuid()));
     }
 
     @Test
     // Tests that a run with slots does not get removed
     public void testNoSessions() {
         String uuid = "uuid";
-        AutomationRunRequest request = new AutomationRunRequest(uuid,10,"firefox","10",Platform.LINUX,AutomationUtils.modifyDate(new Date(),-1, Calendar.HOUR));
+        AutomationRunRequest request = new AutomationRunRequest(uuid, 10, "firefox", "10", Platform.LINUX,
+                AutomationUtils.modifyDate(new Date(), -1, Calendar.HOUR));
         AutomationRunContext context = AutomationContext.getContext();
         context.addRun(request);
 
@@ -135,22 +146,24 @@ public class AutomationRunContextTest extends BaseTest {
         CapabilityMatcher matcher = new AutomationCapabilityMatcher();
         proxy.setCapabilityMatcher(matcher);
         proxySet.add(proxy);
-        Map<String,Object> config = new HashMap<>();
-        config.put(AutomationConstants.UUID,uuid);
+        Map<String, Object> capabilities = new HashMap<>();
+        GridNodeConfiguration config = new GridNodeConfiguration();
+        config.custom.put(AutomationConstants.UUID, uuid);
         proxy.setConfig(config);
         List<TestSlot> testSlots = new ArrayList<>();
-        TestSlot testSlot = new TestSlot(proxy,null,null,config);
+        TestSlot testSlot = new TestSlot(proxy, null, null, capabilities);
         proxy.setTestSlots(testSlots);
         testSlots.add(testSlot);
         proxySet.add(proxy);
         context.cleanUpRunRequests(proxySet);
-        Assert.assertFalse("Run request should not exist as there were no active sessions", context.hasRun(request.getUuid()));
+        Assert.assertFalse("Run request should not exist as there were no active sessions",
+                context.hasRun(request.getUuid()));
     }
 
     @Test
     // Tests that a newly created run is considered a 'new' run
     public void testIsNewRun() {
-        AutomationRunRequest first = new AutomationRunRequest("uuid",3,"firefox");
+        AutomationRunRequest first = new AutomationRunRequest("uuid", 3, "firefox");
         AutomationRunContext context = AutomationContext.getContext();
         context.addRun(first);
         Assert.assertTrue("Run should be considered new", context.isNewRunQueuedUp());
@@ -159,7 +172,8 @@ public class AutomationRunContextTest extends BaseTest {
     @Test
     // Tests that a newly created run is considered a 'new' run
     public void testNotNewRun() {
-        AutomationRunRequest first = new AutomationRunRequest("uuid",null,null,null,null,AutomationUtils.modifyDate(new Date(),-3,Calendar.MINUTE));
+        AutomationRunRequest first = new AutomationRunRequest("uuid", null, null, null, null,
+                AutomationUtils.modifyDate(new Date(), -3, Calendar.MINUTE));
         AutomationRunContext context = AutomationContext.getContext();
         context.addRun(first);
         Assert.assertFalse("Run should be considered new", context.isNewRunQueuedUp());
@@ -179,15 +193,15 @@ public class AutomationRunContextTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        Map<String,Object> capabilities = new HashMap<>();
-        capabilities.put(CapabilityType.PLATFORM,"linux");
-        capabilities.put(CapabilityType.BROWSER_NAME,"chrome");
-        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
+        Map<String, Object> capabilities = new HashMap<>();
+        capabilities.put(CapabilityType.PLATFORM, "linux");
+        capabilities.put(CapabilityType.BROWSER_NAME, "chrome");
+        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
         testSlot.getNewSession(capabilities);
-        proxy.setMultipleTestSlots(testSlot,5);
+        proxy.setMultipleTestSlots(testSlot, 5);
         proxySet.add(proxy);
         int freeThreads = runContext.getTotalThreadsAvailable(proxySet);
-        Assert.assertEquals(5,freeThreads);
+        Assert.assertEquals(5, freeThreads);
     }
 
     @Test
@@ -198,16 +212,16 @@ public class AutomationRunContextTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        Map<String,Object> capabilities = new HashMap<>();
-        capabilities.put(CapabilityType.PLATFORM,"linux");
-        capabilities.put(CapabilityType.BROWSER_NAME,"chrome");
-        capabilities.put(AutomationConstants.UUID,"testUuid");
-        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
+        Map<String, Object> capabilities = new HashMap<>();
+        capabilities.put(CapabilityType.PLATFORM, "linux");
+        capabilities.put(CapabilityType.BROWSER_NAME, "chrome");
+        capabilities.put(AutomationConstants.UUID, "testUuid");
+        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
         testSlot.getNewSession(capabilities);
-        proxy.setMultipleTestSlots(testSlot,5);
+        proxy.setMultipleTestSlots(testSlot, 5);
         proxySet.add(proxy);
         int freeThreads = runContext.getTotalThreadsAvailable(proxySet);
-        Assert.assertEquals(5,freeThreads);
+        Assert.assertEquals(5, freeThreads);
     }
 
     @Test
@@ -219,18 +233,18 @@ public class AutomationRunContextTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        Map<String,Object> capabilities = new HashMap<>();
-        capabilities.put(CapabilityType.PLATFORM,"linux");
-        capabilities.put(CapabilityType.BROWSER_NAME,"chrome");
-        capabilities.put(AutomationConstants.UUID,uuid);
-        AutomationRunRequest request = new AutomationRunRequest(uuid,10,"chrome");
+        Map<String, Object> capabilities = new HashMap<>();
+        capabilities.put(CapabilityType.PLATFORM, "linux");
+        capabilities.put(CapabilityType.BROWSER_NAME, "chrome");
+        capabilities.put(AutomationConstants.UUID, uuid);
+        AutomationRunRequest request = new AutomationRunRequest(uuid, 10, "chrome");
         runContext.addRun(request);
-        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
+        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
         testSlot.getNewSession(capabilities);
-        proxy.setMultipleTestSlots(testSlot,5);
+        proxy.setMultipleTestSlots(testSlot, 5);
         proxySet.add(proxy);
         int freeThreads = runContext.getTotalThreadsAvailable(proxySet);
-        Assert.assertEquals(0,freeThreads);
+        Assert.assertEquals(0, freeThreads);
     }
 
     @Test
@@ -242,18 +256,19 @@ public class AutomationRunContextTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        Map<String,Object> capabilities = new HashMap<>();
-        capabilities.put(CapabilityType.PLATFORM,"linux");
-        capabilities.put(CapabilityType.BROWSER_NAME,"chrome");
-        capabilities.put(AutomationConstants.UUID,uuid);
-        AutomationRunRequest request = new AutomationRunRequest(uuid,10,"chrome","23",Platform.LINUX, AutomationUtils.modifyDate(new Date(),-5,Calendar.MINUTE));
+        Map<String, Object> capabilities = new HashMap<>();
+        capabilities.put(CapabilityType.PLATFORM, "linux");
+        capabilities.put(CapabilityType.BROWSER_NAME, "chrome");
+        capabilities.put(AutomationConstants.UUID, uuid);
+        AutomationRunRequest request = new AutomationRunRequest(uuid, 10, "chrome", "23", Platform.LINUX,
+                AutomationUtils.modifyDate(new Date(), -5, Calendar.MINUTE));
         runContext.addRun(request);
-        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
+        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
         testSlot.getNewSession(capabilities);
         int inProgressTests = 5;
-        proxy.setMultipleTestSlots(testSlot,inProgressTests);
+        proxy.setMultipleTestSlots(testSlot, inProgressTests);
         proxySet.add(proxy);
         int freeThreads = runContext.getTotalThreadsAvailable(proxySet);
-        Assert.assertEquals("Free threads should reflect in progress test count",inProgressTests,freeThreads);
+        Assert.assertEquals("Free threads should reflect in progress test count", inProgressTests, freeThreads);
     }
 }

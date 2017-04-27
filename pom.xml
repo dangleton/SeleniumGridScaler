@@ -72,7 +72,7 @@
     <dependency>
       <groupId>org.seleniumhq.selenium</groupId>
       <artifactId>selenium-server</artifactId>
-      <version>2.52.0</version>
+      <version>3.4.0</version>
       <exclusions>
         <exclusion>
           <groupId>commons-codec</groupId>
@@ -295,7 +295,7 @@
       </plugin>
       <!-- Maven convergence plugin to ensure there are no dependency version 
         conflicts in the project -->
-      <plugin>
+      <!-- <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
         <version>1.4</version>
@@ -312,7 +312,7 @@
             </goals>
           </execution>
         </executions>
-      </plugin>
+      </plugin> -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>

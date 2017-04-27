@@ -11,24 +11,25 @@
  */
 package com.rmn.qa.task;
 
+import java.text.ParseException;
+import java.util.Calendar;
+import java.util.Date;
+
+import org.openqa.grid.internal.ProxySet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.rmn.qa.AutomationConstants;
 import com.rmn.qa.AutomationUtils;
 import com.rmn.qa.RegistryRetriever;
 import com.rmn.qa.aws.AwsVmManager;
 import com.rmn.qa.aws.VmManager;
-import org.openqa.grid.internal.ProxySet;
-import org.openqa.grid.internal.utils.GridHubConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.text.ParseException;
-import java.util.Calendar;
-import java.util.Date;
 
 /**
- * Task to shut down the hub if it was dynamically started.  This task should only be started if this hub is a
- * should be terminated via {@link com.rmn.qa.aws.VmManager EC2}
+ * Task to shut down the hub if it was dynamically started. This task should only be started if this hub is a should be
+ * terminated via {@link com.rmn.qa.aws.VmManager EC2}
+ * 
  * @author mhardin
  */
 public class AutomationHubCleanupTask extends AbstractAutomationCleanupTask {
@@ -45,11 +46,15 @@ public class AutomationHubCleanupTask extends AbstractAutomationCleanupTask {
 
     /**
      * Constructs a hub cleanup task with the specified parameters
-     * @param registryRetriever Context retrieval mechanism to use
-     * @param ec2 EC2 implementation to use for interaction with the hub
-     * @param instanceId Instance ID of the hub to cleanup
+     * 
+     * @param registryRetriever
+     *            Context retrieval mechanism to use
+     * @param ec2
+     *            EC2 implementation to use for interaction with the hub
+     * @param instanceId
+     *            Instance ID of the hub to cleanup
      */
-    public AutomationHubCleanupTask(RegistryRetriever registryRetriever, VmManager ec2,String instanceId) {
+    public AutomationHubCleanupTask(RegistryRetriever registryRetriever, VmManager ec2, String instanceId) {
         super(registryRetriever);
         this.ec2 = ec2;
         this.instanceId = instanceId;
@@ -57,6 +62,7 @@ public class AutomationHubCleanupTask extends AbstractAutomationCleanupTask {
 
     /**
      * Returns the ProxySet to be used for cleanup purposes.
+     * 
      * @return
      */
     @VisibleForTesting
@@ -71,49 +77,54 @@ public class AutomationHubCleanupTask extends AbstractAutomationCleanupTask {
 
     /**
      * Returns the created date which is pulled from the grid configuration
+     * 
      * @return
      */
     protected Object getCreatedDate() {
-        GridHubConfiguration config = registryRetriever.retrieveRegistry().getConfiguration();
-        Object createdDate = config.getAllParams().get(AutomationConstants.CONFIG_CREATED_DATE);
+        org.openqa.grid.internal.utils.configuration.GridHubConfiguration config =
+                registryRetriever.retrieveRegistry().getConfiguration();
+        Object createdDate = config.custom.get(AutomationConstants.CONFIG_CREATED_DATE);
         return createdDate;
     }
 
-    // We're going to continuously monitor this hub to see if we can shut it down.  If were approaching the next
-    // billing cycle and the hub has no nodes, we will terminate the hub.  Also, if there is an error parsing the created date,
+    // We're going to continuously monitor this hub to see if we can shut it down. If were approaching the next
+    // billing cycle and the hub has no nodes, we will terminate the hub. Also, if there is an error parsing the created
+    // date,
     // we will terminate it at our earliest convenience (no nodes) without regard to the creation time
     @Override
     public void doWork() {
         log.info("Performing cleanup on hub.");
         synchronized (AutomationHubCleanupTask.class) {
-            if(createdDate == null) {
+            if (createdDate == null) {
                 Object createdDate = getCreatedDate();
-                try{
-                    AutomationHubCleanupTask.createdDate = AwsVmManager.NODE_DATE_FORMAT.parse((String)createdDate);
-                } catch(ParseException pe) {
+                try {
+                    AutomationHubCleanupTask.createdDate = AwsVmManager.NODE_DATE_FORMAT.parse((String) createdDate);
+                } catch (ParseException pe) {
                     String message = "Error parsing created date for hub: " + pe;
                     log.error(message);
                     errorEncountered = true;
                 }
-                if(!errorEncountered) {
+                if (!errorEncountered) {
                     // Set the end date to be 55 minutes + creation date
-                    AutomationHubCleanupTask.endDate = AutomationUtils.modifyDate(AutomationHubCleanupTask.createdDate, 55, Calendar.MINUTE);
+                    AutomationHubCleanupTask.endDate =
+                            AutomationUtils.modifyDate(AutomationHubCleanupTask.createdDate, 55, Calendar.MINUTE);
                 }
             }
         }
         Date currentTime = new Date();
-        if(errorEncountered || currentTime.after(AutomationHubCleanupTask.endDate)) {
+        if (errorEncountered || currentTime.after(AutomationHubCleanupTask.endDate)) {
             // If we're into the next billing cycle, don't shut the hub down
-            if(errorEncountered && getProxySet().isEmpty()) {
+            if (errorEncountered && getProxySet().isEmpty()) {
                 log.info("Error was encountered parsing the created date, so the hub will be shutdown as it is empty.");
                 ec2.terminateInstance(instanceId);
-            } else if(AutomationUtils.isCurrentTimeAfterDate(AutomationHubCleanupTask.endDate, 6, Calendar.MINUTE)) {
+            } else if (AutomationUtils.isCurrentTimeAfterDate(AutomationHubCleanupTask.endDate, 6, Calendar.MINUTE)) {
                 log.info("Current date: " + new Date());
                 log.info("Current end date: " + AutomationHubCleanupTask.endDate);
                 log.info(String.format("Hub [%s] ran into the next billing cycle.  Increasing end date.", instanceId));
-                AutomationHubCleanupTask.endDate = AutomationUtils.modifyDate(AutomationHubCleanupTask.endDate,60,Calendar.MINUTE);
+                AutomationHubCleanupTask.endDate =
+                        AutomationUtils.modifyDate(AutomationHubCleanupTask.endDate, 60, Calendar.MINUTE);
                 return;
-            }else if(getProxySet().isEmpty()){
+            } else if (getProxySet().isEmpty()) {
                 log.warn("No running nodes found after hub expiration time -- terminating hub: " + instanceId);
                 ec2.terminateInstance(instanceId);
             } else {

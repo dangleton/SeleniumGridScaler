@@ -14,9 +14,6 @@ package com.rmn.qa.servlet;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -24,12 +21,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.openqa.grid.common.GridDocHelper;
 import org.openqa.grid.internal.Registry;
 import org.openqa.grid.internal.RemoteProxy;
 import org.openqa.grid.internal.TestSession;
 import org.openqa.grid.internal.TestSlot;
-import org.openqa.grid.internal.utils.GridHubConfiguration;
+import org.openqa.grid.internal.utils.configuration.GridHubConfiguration;
 import org.openqa.grid.selenium.proxy.DefaultRemoteProxy;
 import org.openqa.grid.web.servlet.RegistryBasedServlet;
 import org.openqa.grid.web.utils.BrowserNameUtils;
@@ -47,8 +43,8 @@ import com.rmn.qa.AutomationRequestMatcher;
 import com.rmn.qa.AutomationRunRequest;
 
 /**
- * Front end to monitor what is currently happening on the proxies. The display is defined by
- * HtmlRenderer returned by the RemoteProxy.getHtmlRenderer() method.
+ * Front end to monitor what is currently happening on the proxies. The display is defined by HtmlRenderer returned by
+ * the RemoteProxy.getHtmlRenderer() method.
  */
 public class StatusServlet extends RegistryBasedServlet {
 
@@ -68,6 +64,7 @@ public class StatusServlet extends RegistryBasedServlet {
 
     /**
      * Constructs a servlet with the specified registry
+     * 
      * @param registry
      */
     public StatusServlet(Registry registry) {
@@ -77,7 +74,8 @@ public class StatusServlet extends RegistryBasedServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
 
         int refresh = -1;
 
@@ -116,10 +114,14 @@ public class StatusServlet extends RegistryBasedServlet {
         builder.append("<H1>Grid Hub ");
         builder.append(coreVersion).append(coreRevision);
         builder.append("</H1>");
-        int chromeThreads = requestMatcher.getNumFreeThreadsForParameters(getRegistry().getAllProxies(),new AutomationRunRequest(StatusServlet.class.getSimpleName(),null, BrowserType.CHROME));
-        int firefoxThreads = requestMatcher.getNumFreeThreadsForParameters(getRegistry().getAllProxies(),new AutomationRunRequest(StatusServlet.class.getSimpleName(),null,BrowserType.FIREFOX));
-        int ieThreads = requestMatcher.getNumFreeThreadsForParameters(getRegistry().getAllProxies(),new AutomationRunRequest(StatusServlet.class.getSimpleName(),null,"internetexplorer"));
-        builder.append("<H2>Free Threads - Chrome: ").append(chromeThreads).append(" Firefox: ").append(firefoxThreads).append(" IE: ").append(ieThreads).append("</H2>");
+        int chromeThreads = requestMatcher.getNumFreeThreadsForParameters(getRegistry().getAllProxies(),
+                new AutomationRunRequest(StatusServlet.class.getSimpleName(), null, BrowserType.CHROME));
+        int firefoxThreads = requestMatcher.getNumFreeThreadsForParameters(getRegistry().getAllProxies(),
+                new AutomationRunRequest(StatusServlet.class.getSimpleName(), null, BrowserType.FIREFOX));
+        int ieThreads = requestMatcher.getNumFreeThreadsForParameters(getRegistry().getAllProxies(),
+                new AutomationRunRequest(StatusServlet.class.getSimpleName(), null, "internetexplorer"));
+        builder.append("<H2>Free Threads - Chrome: ").append(chromeThreads).append(" Firefox: ").append(firefoxThreads)
+                .append(" IE: ").append(ieThreads).append("</H2>");
 
         for (RemoteProxy proxy : getRegistry().getAllProxies()) {
             StringBuilder localBuilder = new StringBuilder();
@@ -128,10 +130,10 @@ public class StatusServlet extends RegistryBasedServlet {
             localBuilder.append("<legend>").append(proxy.getClass().getSimpleName()).append("</legend>");
             localBuilder.append("listening on ").append(proxy.getRemoteHost());
 
-            Object instanceId = proxy.getConfig().get(AutomationConstants.INSTANCE_ID);
-            if(instanceId != null) {
-                AutomationDynamicNode node = AutomationContext.getContext().getNode((String)instanceId);
-                if(node != null) {
+            Object instanceId = proxy.getConfig().custom.get(AutomationConstants.INSTANCE_ID);
+            if (instanceId != null) {
+                AutomationDynamicNode node = AutomationContext.getContext().getNode((String) instanceId);
+                if (node != null) {
                     localBuilder.append("<br>EC2 dynamic node " + node.getInstanceId());
                     localBuilder.append("<br>Start time " + node.getStartDate());
                     localBuilder.append("<br>Current shutdown time ").append(node.getEndDate());
@@ -154,7 +156,7 @@ public class StatusServlet extends RegistryBasedServlet {
             for (TestSlot slot : proxy.getTestSlots()) {
                 TestSession session = slot.getSession();
 
-                String icon = getIcon(slot.getCapabilities(),proxy);
+                String icon = getIcon(slot.getCapabilities(), proxy);
                 if (icon != null) {
                     localBuilder.append("<img ");
                     localBuilder.append("src='").append(icon).append("' ");
@@ -168,7 +170,7 @@ public class StatusServlet extends RegistryBasedServlet {
                 } else {
                     localBuilder.append(" title='")
                             .append(slot.getCapabilities())
-                            .append("type="+slot.getProtocol())
+                            .append("type=" + slot.getProtocol())
                             .append("' ");
                 }
 
@@ -225,90 +227,92 @@ public class StatusServlet extends RegistryBasedServlet {
         builder.append("<b>Config for the hub :</b><br/>");
         builder.append(prettyHtmlPrint(config));
 
-        if (verbose) {
-
-            GridHubConfiguration tmp = new GridHubConfiguration();
-            tmp.loadDefault();
-
-            builder.append("<b>Config details :</b><br/>");
-            builder.append("<b>hub launched with :</b>");
-            for (int i = 0; i < config.getArgs().length; i++) {
-                builder.append(config.getArgs()[i]).append(" ");
-            }
-
-            builder.append("<br/><b>the final configuration comes from :</b><br/>");
-            builder.append("<b>the default :</b><br/>");
-            builder.append(prettyHtmlPrint(tmp));
-
-            builder.append("<b>updated with grid1 config :</b>");
-            if (config.getGrid1Yml() != null) {
-                builder.append(config.getGrid1Yml()).append("<br/>");
-                tmp.loadFromGridYml(config.getGrid1Yml());
-                builder.append(prettyHtmlPrint(tmp));
-            } else {
-                builder
-                        .append("No grid1 file specified. To specify one, use -grid1Yml XXX.yml where XXX.yml is a grid1 config file</br>");
-            }
-
-            builder.append("<br/><b>updated with grid2 config : </b>");
-            if (config.getGrid2JSON() != null) {
-                builder.append(config.getGrid2JSON()).append("<br/>");
-                tmp.loadFromJSON(config.getGrid2JSON());
-                builder.append(prettyHtmlPrint(tmp));
-            } else {
-                builder
-                        .append("No hub config file specified. To specify one, use -hubConfig XXX.json where XXX.json is a hub config file</br>");
-            }
-
-            builder.append("<br/><b>updated with params :</b></br>");
-            tmp.loadFromCommandLine(config.getArgs());
-            builder.append(prettyHtmlPrint(tmp));
-        }
+        // if (verbose) {
+        //
+        // GridHubConfiguration tmp = new GridHubConfiguration();
+        //// tmp.loadDefault();
+        //
+        // builder.append("<b>Config details :</b><br/>");
+        // builder.append("<b>hub launched with :</b>");
+        // for (int i = 0; i < config.getArgs().length; i++) {
+        // builder.append(config.getArgs()[i]).append(" ");
+        // }
+        //
+        // builder.append("<br/><b>the final configuration comes from :</b><br/>");
+        // builder.append("<b>the default :</b><br/>");
+        // builder.append(prettyHtmlPrint(tmp));
+        //
+        // builder.append("<b>updated with grid1 config :</b>");
+        // if (config.getGrid1Yml() != null) {
+        // builder.append(config.getGrid1Yml()).append("<br/>");
+        // tmp.loadFromGridYml(config.getGrid1Yml());
+        // builder.append(prettyHtmlPrint(tmp));
+        // } else {
+        // builder
+        // .append("No grid1 file specified. To specify one, use -grid1Yml XXX.yml where XXX.yml is a grid1 config
+        // file</br>");
+        // }
+        //
+        // builder.append("<br/><b>updated with grid2 config : </b>");
+        // if (config.getGrid2JSON() != null) {
+        // builder.append(config.getGrid2JSON()).append("<br/>");
+        // tmp.loadFromJSON(config.getGrid2JSON());
+        // builder.append(prettyHtmlPrint(tmp));
+        // } else {
+        // builder
+        // .append("No hub config file specified. To specify one, use -hubConfig XXX.json where XXX.json is a hub config
+        // file</br>");
+        // }
+        //
+        // builder.append("<br/><b>updated with params :</b></br>");
+        // tmp.loadFromCommandLine(config.getArgs());
+        // builder.append(prettyHtmlPrint(tmp));
+        // }
         return builder.toString();
     }
 
     private String key(String key) {
-        return "<abbr title='" + GridDocHelper.getHubParam(key) + "'>" + key + " : </abbr>";
+        return "<abbr title='" + key + "'>" + key + " : </abbr>";
     }
 
     private String prettyHtmlPrint(GridHubConfiguration config) {
         StringBuilder b = new StringBuilder();
 
-        b.append(key("host")).append(config.getHost()).append("</br>");
-        b.append(key("port")).append(config.getPort()).append("</br>");
-        b.append(key("cleanUpCycle")).append(config.getCleanupCycle()).append("</br>");
-        b.append(key("timeout")).append(config.getTimeout()).append("</br>");
-        b.append(key("browserTimeout")).append(config.getBrowserTimeout()).append("</br>");
+        b.append(key("host")).append(config.help).append("</br>");
+        b.append(key("port")).append(config.port).append("</br>");
+        b.append(key("cleanUpCycle")).append(config.cleanUpCycle).append("</br>");
+        b.append(key("timeout")).append(config.timeout).append("</br>");
+        b.append(key("browserTimeout")).append(config.browserTimeout).append("</br>");
 
-
-        b.append(key("newSessionWaitTimeout")).append(config.getNewSessionWaitTimeout())
+        b.append(key("newSessionWaitTimeout")).append(config.newSessionWaitTimeout)
                 .append("</br>");
-        b.append(key("grid1Mapping")).append(config.getGrid1Mapping()).append("</br>");
-        b.append(key("throwOnCapabilityNotPresent")).append(config.isThrowOnCapabilityNotPresent())
+        // b.append(key("grid1Mapping")).append(config.getGrid1Mapping()).append("</br>");
+        b.append(key("throwOnCapabilityNotPresent")).append(config.throwOnCapabilityNotPresent)
                 .append("</br>");
 
         b.append(key("capabilityMatcher"))
                 .append(
-                        config.getCapabilityMatcher() == null ? "null" : config.getCapabilityMatcher()
-                                .getClass().getCanonicalName()).append("</br>");
+                        config.capabilityMatcher == null ? "null" : config.capabilityMatcher
+                                .getClass().getCanonicalName())
+                .append("</br>");
         b.append(key("prioritizer"))
                 .append(
-                        config.getPrioritizer() == null ? "null" : config.getPrioritizer().getClass()
+                        config.prioritizer == null ? "null" : config.prioritizer.getClass()
                                 .getCanonicalName())
                 .append("</br>");
         b.append(key("servlets"));
-        for (String s : config.getServlets()) {
+        for (String s : config.servlets) {
             b.append(s.getClass().getCanonicalName()).append(",");
         }
         b.append("</br></br>");
-        b.append("<u>all params :</u></br></br>");
-        List<String> keys = new ArrayList<String>();
-        keys.addAll(config.getAllParams().keySet());
-        Collections.sort(keys);
-        for (String s : keys) {
-            b.append(key(s.replaceFirst("-", ""))).append(config.getAllParams().get(s)).append("</br>");
-        }
-        b.append("</br>");
+        // b.append("<u>all params :</u></br></br>");
+        // List<String> keys = new ArrayList<String>();
+        // keys.addAll(config.getAllParams().keySet());
+        // Collections.sort(keys);
+        // for (String s : keys) {
+        // b.append(key(s.replaceFirst("-", ""))).append(config.getAllParams().get(s)).append("</br>");
+        // }
+        // b.append("</br>");
         return b.toString();
     }
 
@@ -333,7 +337,7 @@ public class StatusServlet extends RegistryBasedServlet {
         }
     }
 
-    private String getIcon(Map<String, Object> capabilities,RemoteProxy proxy) {
+    private String getIcon(Map<String, Object> capabilities, RemoteProxy proxy) {
         return BrowserNameUtils.getConsoleIconPath(new DesiredCapabilities(capabilities),
                 proxy.getRegistry());
     }

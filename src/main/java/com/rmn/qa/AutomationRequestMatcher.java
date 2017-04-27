@@ -11,6 +11,10 @@
  */
 package com.rmn.qa;
 
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.openqa.grid.internal.ProxySet;
 import org.openqa.grid.internal.RemoteProxy;
 import org.openqa.grid.internal.TestSession;
@@ -18,12 +22,9 @@ import org.openqa.grid.internal.TestSlot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Computes how many free/available resources there are for a given browser, browser version, and OS
+ * 
  * @author mhardin
  */
 public class AutomationRequestMatcher implements RequestMatcher {
@@ -37,92 +38,106 @@ public class AutomationRequestMatcher implements RequestMatcher {
     public int getNumFreeThreadsForParameters(ProxySet proxySet, AutomationRunRequest runRequest) {
         // This will keep a count of the number of instances that can run our requested test
         int totalFreeSlots = 0;
-        // Current runs registered with the hub.  Make a copy of the set so we don't muck with the original set of registered runs
-        Map<String,Integer> currentRuns = new HashMap<>();
-        // Add them all into our map so we can keep track of both the runs we need to delete from our free count as well as
+        // Current runs registered with the hub. Make a copy of the set so we don't muck with the original set of
+        // registered runs
+        Map<String, Integer> currentRuns = new HashMap<>();
+        // Add them all into our map so we can keep track of both the runs we need to delete from our free count as well
+        // as
         // tests that are in progress for the run.
-        for(String key : AutomationContext.getContext().getRunUuids()) {
-            currentRuns.put(key,0);
+        for (String key : AutomationContext.getContext().getRunUuids()) {
+            currentRuns.put(key, 0);
         }
-        for(RemoteProxy proxy : proxySet) {
+        for (RemoteProxy proxy : proxySet) {
             int matchingCapableSlots = 0;
             int runningSessions = 0;
             int matchingRunningSessions = 0;
             int maxNodeThreadsAvailable = proxy.getMaxNumberOfConcurrentTestSessions();
-            Map<String,Object> config = proxy.getConfig();
+            Map<String, String> config = proxy.getConfig().custom;
             String instanceId = null;
-            if(config.containsKey(AutomationConstants.INSTANCE_ID)) {
-                instanceId = (String)config.get(AutomationConstants.INSTANCE_ID);
+            if (config.containsKey(AutomationConstants.INSTANCE_ID)) {
+                instanceId = config.get(AutomationConstants.INSTANCE_ID);
             }
             boolean nodeMarkedForTermination = false;
-            if(instanceId != null) {
+            if (instanceId != null) {
                 AutomationDynamicNode node = AutomationContext.getContext().getNode(instanceId);
                 // If this node has been spun up and it is no longer in the running state, go to the next test slot
                 // as we cannot consider this node to be a free resource
-                if(node != null) {// There really shouldn't ever be a null node here but adding the check regardless
-                    if(node.getStatus() != AutomationDynamicNode.STATUS.RUNNING) {
-                        // If this is a dynamic node and its not in the running state, we should not be calculating its resources as available
+                if (node != null) {// There really shouldn't ever be a null node here but adding the check regardless
+                    if (node.getStatus() != AutomationDynamicNode.STATUS.RUNNING) {
+                        // If this is a dynamic node and its not in the running state, we should not be calculating its
+                        // resources as available
                         nodeMarkedForTermination = true;
                     }
                 }
             }
-            if(instanceId != null) {
-                log.info(String.format("Analyzing node %s...",instanceId));
+            if (instanceId != null) {
+                log.info(String.format("Analyzing node %s...", instanceId));
             } else {
                 log.info("Analyzing node...");
             }
             for (TestSlot testSlot : proxy.getTestSlots()) {
-                //TODO Do selenium flavor of browsers to match here from RMN
-                //TODO Better property matching
+                // TODO Do selenium flavor of browsers to match here from RMN
+                // TODO Better property matching
                 TestSession session = testSlot.getSession();
-                Map<String,Object> testSlotCapabilities = testSlot.getCapabilities();
-                if(session != null) {
-                    Map<String,Object> sessionCapabilities = session.getRequestedCapabilities();
+                Map<String, Object> testSlotCapabilities = testSlot.getCapabilities();
+                if (session != null) {
+                    Map<String, Object> sessionCapabilities = session.getRequestedCapabilities();
                     Object uuid = sessionCapabilities.get(AutomationConstants.UUID);
-                    // If the session has a UUID, go ahead and remove it from our runs that we're going to subtract from our available
+                    // If the session has a UUID, go ahead and remove it from our runs that we're going to subtract from
+                    // our available
                     // node count as this means the run is under way
-                    if(uuid != null && currentRuns.containsKey(uuid)) {
+                    if (uuid != null && currentRuns.containsKey(uuid)) {
                         int previousCount = currentRuns.get(uuid);
-                        currentRuns.put((String)uuid,previousCount + 1);
+                        currentRuns.put((String) uuid, previousCount + 1);
                     }
-                    if(runRequest.matchesCapabilities(testSlotCapabilities)) {
+                    if (runRequest.matchesCapabilities(testSlotCapabilities)) {
                         matchingRunningSessions++;
                     }
                     runningSessions++;
                 }
-                if(runRequest.matchesCapabilities(testSlotCapabilities)) {
+                if (runRequest.matchesCapabilities(testSlotCapabilities)) {
                     matchingCapableSlots++;
                 }
             }
-            log.info(String.format("Node had %d matching running sessions and %d matching capable slots",matchingRunningSessions,matchingCapableSlots));
+            log.info(String.format("Node had %d matching running sessions and %d matching capable slots",
+                    matchingRunningSessions, matchingCapableSlots));
             int nodeFreeSlots;
-            // If the node is marked for termination, we need to subtract matching running sessions from our free count, and make sure to not add
+            // If the node is marked for termination, we need to subtract matching running sessions from our free count,
+            // and make sure to not add
             // any capable slots, as they're really not even 'capable' since the node will be shutdown
-            if(nodeMarkedForTermination) {
-                log.info(String.format("Node marked for termination.  Subtracting %d sessions from %d total free slots",matchingRunningSessions,totalFreeSlots));
+            if (nodeMarkedForTermination) {
+                log.info(String.format("Node marked for termination.  Subtracting %d sessions from %d total free slots",
+                        matchingRunningSessions, totalFreeSlots));
                 totalFreeSlots -= matchingRunningSessions;
             } else {
-                // Decrement the running sessions only if running + free is more than the total threads the node can handle. This will handle
+                // Decrement the running sessions only if running + free is more than the total threads the node can
+                // handle. This will handle
                 // load from a capacity standpoint of a node
-                if((runningSessions + matchingCapableSlots) > maxNodeThreadsAvailable ) {
-                    if(matchingCapableSlots < maxNodeThreadsAvailable) {
-                        log.debug(String.format("Subtracting %d running sessions from %d capable sessions",runningSessions,matchingCapableSlots));
+                if ((runningSessions + matchingCapableSlots) > maxNodeThreadsAvailable) {
+                    if (matchingCapableSlots < maxNodeThreadsAvailable) {
+                        log.debug(String.format("Subtracting %d running sessions from %d capable sessions",
+                                runningSessions, matchingCapableSlots));
                         nodeFreeSlots = matchingCapableSlots - runningSessions;
                     } else {
-                        log.debug(String.format("Subtracting %d running sessions from %d maximum node thread limit",matchingCapableSlots,maxNodeThreadsAvailable));
+                        log.debug(String.format("Subtracting %d running sessions from %d maximum node thread limit",
+                                matchingCapableSlots, maxNodeThreadsAvailable));
                         nodeFreeSlots = maxNodeThreadsAvailable - runningSessions;
                     }
                 } else {
-                    log.debug(String.format("%d free node slots derived from matching capable slots",matchingCapableSlots));
+                    log.debug(String.format("%d free node slots derived from matching capable slots",
+                            matchingCapableSlots));
                     nodeFreeSlots = matchingCapableSlots;
-                    // If there were any running sessions that match this browser, we need to subtract them from the capable sessions
-                    if(matchingRunningSessions != 0) {
-                        log.debug(String.format("%d matching running sessions will be subtracted from %d node free slots",matchingRunningSessions,nodeFreeSlots));
+                    // If there were any running sessions that match this browser, we need to subtract them from the
+                    // capable sessions
+                    if (matchingRunningSessions != 0) {
+                        log.debug(
+                                String.format("%d matching running sessions will be subtracted from %d node free slots",
+                                        matchingRunningSessions, nodeFreeSlots));
                         nodeFreeSlots -= matchingRunningSessions;
                     }
                 }
                 // If nodeFreeSlots is negative, go ahead and subtract the capable sessions instead
-                if(nodeFreeSlots < 0) {
+                if (nodeFreeSlots < 0) {
                     log.warn("The number of free node slots was less than 0.  Resetting to 0.");
                     nodeFreeSlots = 0;
                 }
@@ -130,31 +145,38 @@ public class AutomationRequestMatcher implements RequestMatcher {
             }
         }
         // Any runs still in this set means that run has not started yet, so we should consider this in our math
-        for(String uuid : currentRuns.keySet()) {
+        for (String uuid : currentRuns.keySet()) {
             AutomationRunRequest request = AutomationContext.getContext().getRunRequest(uuid);
             // If we're not dealing with an old run request that just never started, go ahead and decrement
             // the value from available nodes on this hub
-            if(request != null && !AutomationUtils.isCurrentTimeAfterDate(request.getCreatedDate(), 90, Calendar.SECOND) ) {
-                if(!runRequest.matchesCapabilities(request)) {
-                    log.warn(String.format("Requested run %s did not match pending run %s so count will not be included",runRequest,request));
+            if (request != null
+                    && !AutomationUtils.isCurrentTimeAfterDate(request.getCreatedDate(), 90, Calendar.SECOND)) {
+                if (!runRequest.matchesCapabilities(request)) {
+                    log.warn(
+                            String.format("Requested run %s did not match pending run %s so count will not be included",
+                                    runRequest, request));
                     continue;
                 }
                 int currentlyRunningTestsForRun = currentRuns.get(uuid);
-                // If some of the tests are underway, subtract the currently running tests from the number of total tests, and then subtract that
-                // from the number of free slots.  This way we're including tests that may not have started yet in our free resource check
-                if(currentlyRunningTestsForRun < request.getThreadCount()) {
+                // If some of the tests are underway, subtract the currently running tests from the number of total
+                // tests, and then subtract that
+                // from the number of free slots. This way we're including tests that may not have started yet in our
+                // free resource check
+                if (currentlyRunningTestsForRun < request.getThreadCount()) {
                     int countToSubtract = request.getThreadCount() - currentlyRunningTestsForRun;
-                    log.debug(String.format("In progress run has %d threads that will be subtracted from our total free count %d.",countToSubtract,totalFreeSlots));
+                    log.debug(String.format(
+                            "In progress run has %d threads that will be subtracted from our total free count %d.",
+                            countToSubtract, totalFreeSlots));
                     totalFreeSlots -= countToSubtract;
                 }
             }
         }
         // Make sure we don't return a negative number to the caller
-        if(totalFreeSlots < 0) {
+        if (totalFreeSlots < 0) {
             log.info("The number of total free node slots was less than 0.  Resetting to 0.");
             totalFreeSlots = 0;
         }
-        log.info(String.format("Returning %s free slots for request %s",totalFreeSlots,runRequest));
+        log.info(String.format("Returning %s free slots for request %s", totalFreeSlots, runRequest));
         return totalFreeSlots;
     }
 
@@ -164,11 +186,11 @@ public class AutomationRequestMatcher implements RequestMatcher {
     @Override
     public int getNumInProgressTests(ProxySet proxySet, AutomationRunRequest runRequest) {
         int inProgressTests = 0;
-        for(RemoteProxy proxy : proxySet) {
-            for(TestSlot testSlot : proxy.getTestSlots() ) {
+        for (RemoteProxy proxy : proxySet) {
+            for (TestSlot testSlot : proxy.getTestSlots()) {
                 TestSession session = testSlot.getSession();
-                if(session != null) {
-                    if(runRequest.matchesCapabilities(session.getRequestedCapabilities())) {
+                if (session != null) {
+                    if (runRequest.matchesCapabilities(session.getRequestedCapabilities())) {
                         inProgressTests++;
                     }
                 }

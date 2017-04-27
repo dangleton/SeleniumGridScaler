@@ -12,8 +12,11 @@
 
 package com.rmn.qa;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonElement;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.openqa.grid.common.RegistrationRequest;
 import org.openqa.grid.common.exception.GridException;
 import org.openqa.grid.internal.Registry;
@@ -22,12 +25,10 @@ import org.openqa.grid.internal.TestSession;
 import org.openqa.grid.internal.TestSlot;
 import org.openqa.grid.internal.utils.CapabilityMatcher;
 import org.openqa.grid.internal.utils.HtmlRenderer;
+import org.openqa.grid.internal.utils.configuration.GridNodeConfiguration;
 import org.openqa.selenium.remote.internal.HttpClientFactory;
 
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import com.google.gson.JsonObject;
 
 /**
  * Created by mhardin on 2/6/14.
@@ -35,7 +36,7 @@ import java.util.Map;
 public class MockRemoteProxy implements RemoteProxy {
 
     private List<TestSlot> testSlots = new ArrayList<TestSlot>();;
-    private Map<String,Object> config;
+    private GridNodeConfiguration config = new GridNodeConfiguration();
     private CapabilityMatcher matcher;
     private int maxSessions;
 
@@ -49,7 +50,7 @@ public class MockRemoteProxy implements RemoteProxy {
     }
 
     public void setMultipleTestSlots(TestSlot testSlot, int count) {
-        for(int i=0;i<count;i++) {
+        for (int i = 0; i < count; i++) {
             testSlots.add(testSlot);
         }
     }
@@ -84,11 +85,11 @@ public class MockRemoteProxy implements RemoteProxy {
     }
 
     @Override
-    public Map<String, Object> getConfig() {
+    public GridNodeConfiguration getConfig() {
         return config;
     }
 
-    public void setConfig(Map<String,Object> config) {
+    public void setConfig(GridNodeConfiguration config) {
         this.config = config;
     }
 
@@ -158,6 +159,11 @@ public class MockRemoteProxy implements RemoteProxy {
 
     @Override
     public int compareTo(RemoteProxy remoteProxy) {
+        return 0;
+    }
+
+    @Override
+    public long getLastSessionStart() {
         return 0;
     }
 }

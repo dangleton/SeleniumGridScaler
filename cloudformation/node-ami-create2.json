@@ -108,13 +108,13 @@
                 "command" : "mkdir /tmp/grid"
               },
               "010_download_chromedriver" : {
-                "command" : "wget http://chromedriver.storage.googleapis.com/2.22/chromedriver_linux64.zip -O /tmp/grid/chromedriver.zip"
+                "command" : "wget https://chromedriver.storage.googleapis.com/2.22/chromedriver_linux64.zip -O /tmp/grid/chromedriver.zip"
               },
               "020_unzip_cromedriver" : {
                 "command" : "unzip -d /opt/grid /tmp/grid/chromedriver.zip"
               },
               "030_download_selenium" : {
-                "command" : "wget http://selenium-release.storage.googleapis.com/2.42/selenium-server-standalone-2.42.0.jar -O /opt/grid/selenium-server-node.jar"
+                "command" : "wget https://selenium-release.storage.googleapis.com/3.4/selenium-server-standalone-3.4.0.jar -O /opt/grid/selenium-server-node.jar"
               },
               "040_download_chrome" : {
                 "command" : "wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -O /tmp/grid/chrome.deb"
