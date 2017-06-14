@@ -23,7 +23,6 @@ import org.junit.Test;
 import org.openqa.grid.common.SeleniumProtocol;
 import org.openqa.grid.internal.ProxySet;
 import org.openqa.grid.internal.TestSlot;
-import org.openqa.grid.internal.utils.configuration.GridNodeConfiguration;
 import org.openqa.selenium.remote.CapabilityType;
 
 import com.rmn.qa.AutomationCapabilityMatcher;
@@ -45,42 +44,37 @@ public class AutomationNodeCleanupTaskTest extends BaseTest {
     @Test
     // Tests that the hard coded name of the task is correct
     public void testTaskName() {
-        AutomationNodeCleanupTask task = new AutomationNodeCleanupTask(null, null, null);
-        Assert.assertEquals("Name should be the same", AutomationNodeCleanupTask.NAME, task.getDescription());
+        AutomationNodeCleanupTask task = new AutomationNodeCleanupTask(null,null,null);
+        Assert.assertEquals("Name should be the same",AutomationNodeCleanupTask.NAME, task.getDescription()  );
     }
 
     @Test
-    // Tests that the status of a new node does not change after the task runs. This should not happen
+    // Tests that the status of a new node does not change after the task runs.  This should not happen
     // until the node has reached the configured age
     public void testNodeNotOldEnough() {
-        MockAutomationNodeCleanupTask task =
-                new MockAutomationNodeCleanupTask(null, new MockVmManager(), new MockRequestMatcher());
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),new MockRequestMatcher());
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
-        AutomationDynamicNode node = new AutomationDynamicNode("testUuid", "dummyId", null, null, new Date(), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("testUuid","dummyId",null,null,new Date(),10);
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.run();
-        Assert.assertEquals("Status should not be changed as node was not old enough",
-                AutomationDynamicNode.STATUS.RUNNING, node.getStatus());
+        Assert.assertEquals("Status should not be changed as node was not old enough", AutomationDynamicNode.STATUS.RUNNING,node.getStatus());
     }
 
     @Test
     // Tests that the node is set to expired after the configured amount of time
     public void testNodeSetToExpired() {
-        MockAutomationNodeCleanupTask task =
-                new MockAutomationNodeCleanupTask(null, new MockVmManager(), new MockRequestMatcher());
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),new MockRequestMatcher());
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
-        AutomationDynamicNode node = new AutomationDynamicNode("testUuid", "dummyId", null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("testUuid","dummyId",null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.run();
-        Assert.assertEquals("Node should be expired as the end date was old enough",
-                AutomationDynamicNode.STATUS.EXPIRED, node.getStatus());
+        Assert.assertEquals("Node should be expired as the end date was old enough", AutomationDynamicNode.STATUS.EXPIRED,node.getStatus());
     }
 
     @Test
@@ -88,29 +82,27 @@ public class AutomationNodeCleanupTaskTest extends BaseTest {
     public void testNodeCantBeShutDown() {
         MockRequestMatcher matcher = new MockRequestMatcher();
         matcher.setThreadsToReturn(4);
-        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null, new MockVmManager(), matcher);
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),matcher);
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
         String nodeId = "dummyId";
-        AutomationDynamicNode node = new AutomationDynamicNode(nodeId, "dummyId", null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode(nodeId,"dummyId",null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxySet.add(proxy);
-        GridNodeConfiguration config = new GridNodeConfiguration();
-        config.custom.put(AutomationConstants.INSTANCE_ID, nodeId);
+        Map<String,String> config = new HashMap<String, String>();
+        config.put(AutomationConstants.INSTANCE_ID,nodeId);
         proxy.setConfig(config);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        Map<String, Object> capabilities = new HashMap<String, Object>();
-        capabilities.put(CapabilityType.BROWSER_NAME, "firefox");
-        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
+        Map<String,Object> capabilities = new HashMap<String,Object>();
+        capabilities.put(CapabilityType.BROWSER_NAME,"firefox");
+        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
         // Assign a session to the test slot
         testSlot.getNewSession(capabilities);
         proxy.setMultipleTestSlots(testSlot, 5);
-        matcher.setInProgressTests("firefox", 5);
+        matcher.setInProgressTests("firefox",5);
         task.run();
-        Assert.assertEquals("There should not be sufficient free capacity to cause the node to get shut down",
-                AutomationDynamicNode.STATUS.RUNNING, node.getStatus());
+        Assert.assertEquals("There should not be sufficient free capacity to cause the node to get shut down", AutomationDynamicNode.STATUS.RUNNING,node.getStatus());
     }
 
     @Test
@@ -118,68 +110,59 @@ public class AutomationNodeCleanupTaskTest extends BaseTest {
     public void testNodeCantBeShutDownDueToNewRun() {
         MockRequestMatcher matcher = new MockRequestMatcher();
         matcher.setThreadsToReturn(4);
-        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null, new MockVmManager(), matcher);
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),matcher);
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
         String nodeId = "dummyId";
-        AutomationDynamicNode node = new AutomationDynamicNode(nodeId, "dummyId", null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode(nodeId,"dummyId",null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxySet.add(proxy);
-        GridNodeConfiguration config = new GridNodeConfiguration();
-        config.custom.put(AutomationConstants.INSTANCE_ID, nodeId);
+        Map<String,String> config = new HashMap<String, String>();
+        config.put(AutomationConstants.INSTANCE_ID,nodeId);
         proxy.setConfig(config);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        Map<String, Object> capabilities = new HashMap<String, Object>();
-        capabilities.put(CapabilityType.BROWSER_NAME, "firefox");
-        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
+        Map<String,Object> capabilities = new HashMap<String,Object>();
+        capabilities.put(CapabilityType.BROWSER_NAME,"firefox");
+        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
         // Assign a session to the test slot
         testSlot.getNewSession(capabilities);
         proxy.setMultipleTestSlots(testSlot, 5);
-        matcher.setInProgressTests("firefox", 5);
+        matcher.setInProgressTests("firefox",5);
         task.run();
-        Assert.assertEquals("There should not be sufficient free capacity to cause the node to get shut down",
-                AutomationDynamicNode.STATUS.RUNNING, node.getStatus());
+        Assert.assertEquals("There should not be sufficient free capacity to cause the node to get shut down", AutomationDynamicNode.STATUS.RUNNING,node.getStatus());
     }
 
     @Test
     // Tests that if new registered run does not match the node capabilities, it can be shut down
     public void testNodeShutDownNoMatchingInProgressTests() {
-        MockAutomationNodeCleanupTask task =
-                new MockAutomationNodeCleanupTask(null, new MockVmManager(), new MockRequestMatcher());
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),new MockRequestMatcher());
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
-        AutomationDynamicNode node = new AutomationDynamicNode("testUuid", "dummyId", null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("testUuid","dummyId",null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        AutomationRunRequest newRequest = new AutomationRunRequest("uuid", 10, "firefox");
+        AutomationRunRequest newRequest = new AutomationRunRequest("uuid",10,"firefox");
         AutomationContext.getContext().addRun(newRequest);
         task.run();
-        Assert.assertEquals("Node should NOT be expired as a new run has started", AutomationDynamicNode.STATUS.RUNNING,
-                node.getStatus());
+        Assert.assertEquals("Node should NOT be expired as a new run has started", AutomationDynamicNode.STATUS.RUNNING,node.getStatus());
     }
 
     @Test
     // Tests that a node can be terminated if it is empty
     public void testNodeSetToTerminatedEmpty() {
-        MockAutomationNodeCleanupTask task =
-                new MockAutomationNodeCleanupTask(null, new MockVmManager(), new MockRequestMatcher());
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),new MockRequestMatcher());
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
-        AutomationDynamicNode node = new AutomationDynamicNode("testUuid", "dummyId", null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("testUuid","dummyId",null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.run();
-        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED,
-                node.getStatus());
+        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED, node.getStatus());
         task.run();
-        Assert.assertEquals("Node should be terminated as it was empty", AutomationDynamicNode.STATUS.TERMINATED,
-                node.getStatus());
+        Assert.assertEquals("Node should be terminated as it was empty", AutomationDynamicNode.STATUS.TERMINATED, node.getStatus());
     }
 
     @Test
@@ -188,57 +171,49 @@ public class AutomationNodeCleanupTaskTest extends BaseTest {
         String nodeId = "nodeId";
         MockRequestMatcher matcher = new MockRequestMatcher();
         matcher.setThreadsToReturn(10);
-        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null, new MockVmManager(), matcher);
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),matcher);
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
-        AutomationDynamicNode node = new AutomationDynamicNode("testUuid", nodeId, null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("testUuid",nodeId,null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
 
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxySet.add(proxy);
-        GridNodeConfiguration config = new GridNodeConfiguration();
-        config.custom.put(AutomationConstants.INSTANCE_ID, nodeId);
+        Map<String,String> config = new HashMap<String, String>();
+        config.put(AutomationConstants.INSTANCE_ID,nodeId);
         proxy.setConfig(config);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        Map<String, Object> capabilities = new HashMap<String, Object>();
-        capabilities.put(CapabilityType.BROWSER_NAME, "firefox");
-        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
+        Map<String,Object> capabilities = new HashMap<String,Object>();
+        capabilities.put(CapabilityType.BROWSER_NAME,"firefox");
+        TestSlot testSlot = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
         // Assign a session to the test slot
         testSlot.getNewSession(capabilities);
         proxy.setMultipleTestSlots(testSlot, 5);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.run();
-        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED,
-                node.getStatus());
+        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED,node.getStatus());
         task.run();
-        Assert.assertEquals("Node should be expired as it was not empty", AutomationDynamicNode.STATUS.EXPIRED,
-                node.getStatus());
+        Assert.assertEquals("Node should be expired as it was not empty", AutomationDynamicNode.STATUS.EXPIRED,node.getStatus());
     }
 
     @Test
     // Tests that the node is not terminated if it is in the next billing cycle
     public void testNodeNotTerminatedNextBillingCycle() {
-        MockAutomationNodeCleanupTask task =
-                new MockAutomationNodeCleanupTask(null, new MockVmManager(), new MockRequestMatcher());
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),new MockRequestMatcher());
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
         Date startDate = new Date();
-        AutomationDynamicNode node = new AutomationDynamicNode("testUuid", "dummyId", null, null,
-                AutomationUtils.modifyDate(startDate, -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("testUuid","dummyId",null,null,AutomationUtils.modifyDate(startDate,-56, Calendar.MINUTE),10);
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.run();
-        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED,
-                node.getStatus());
-        Date newEndDate = AutomationUtils.modifyDate(new Date(), -61, Calendar.MINUTE);
+        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED, node.getStatus());
+        Date newEndDate = AutomationUtils.modifyDate(new Date(),-61, Calendar.MINUTE);
         node.setEndDate(newEndDate);
         task.run();
-        Assert.assertEquals("Node should be running as its in the next billing cycle",
-                AutomationDynamicNode.STATUS.RUNNING, node.getStatus());
-        Assert.assertTrue("End date should be increased",
-                node.getEndDate().after(AutomationUtils.modifyDate(newEndDate, 54, Calendar.MINUTE)));
+        Assert.assertEquals("Node should be running as its in the next billing cycle", AutomationDynamicNode.STATUS.RUNNING, node.getStatus());
+        Assert.assertTrue("End date should be increased",node.getEndDate().after(AutomationUtils.modifyDate(newEndDate,54,Calendar.MINUTE)));
     }
 
     @Test
@@ -246,19 +221,16 @@ public class AutomationNodeCleanupTaskTest extends BaseTest {
     // 1 node will be terminated
     public void testMultipleNodesNotSufficientLoad() {
         AutomationRequestMatcher matcher = new AutomationRequestMatcher();
-        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null, new MockVmManager(), matcher);
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),matcher);
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
         String nodeId = "dummyId";
         String nodeId2 = "dummyId2";
         String nodeId3 = "dummyId3";
         List<AutomationDynamicNode> nodes = new ArrayList<>();
-        AutomationDynamicNode node = new AutomationDynamicNode("dummyUuid", nodeId, null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
-        AutomationDynamicNode node2 = new AutomationDynamicNode("dummyUuid2", nodeId2, null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
-        AutomationDynamicNode node3 = new AutomationDynamicNode("dummyUuid3", nodeId3, null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("dummyUuid",nodeId,null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
+        AutomationDynamicNode node2 = new AutomationDynamicNode("dummyUuid2",nodeId2,null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
+        AutomationDynamicNode node3 = new AutomationDynamicNode("dummyUuid3",nodeId3,null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
         nodes.add(node);
         nodes.add(node2);
         nodes.add(node3);
@@ -271,112 +243,104 @@ public class AutomationNodeCleanupTaskTest extends BaseTest {
         proxySet.add(proxy);
         proxySet.add(proxy2);
         proxySet.add(proxy3);
-        GridNodeConfiguration config = new GridNodeConfiguration();
-        config.custom.put(AutomationConstants.INSTANCE_ID, nodeId);
+        Map<String,String> config = new HashMap<>();
+        config.put(AutomationConstants.INSTANCE_ID,nodeId);
         proxy.setConfig(config);
         proxy.setMaxNumberOfConcurrentTestSessions(4);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
 
-        GridNodeConfiguration config2 = new GridNodeConfiguration();
-        config2.custom.put(AutomationConstants.INSTANCE_ID, nodeId2);
+        Map<String,String> config2 = new HashMap<>();
+        config2.put(AutomationConstants.INSTANCE_ID,nodeId2);
         proxy2.setMaxNumberOfConcurrentTestSessions(4);
         proxy2.setConfig(config2);
         proxy2.setCapabilityMatcher(new AutomationCapabilityMatcher());
 
-        GridNodeConfiguration config3 = new GridNodeConfiguration();
-        config3.custom.put(AutomationConstants.INSTANCE_ID, nodeId3);
+
+        Map<String,String> config3 = new HashMap<>();
+        config3.put(AutomationConstants.INSTANCE_ID,nodeId3);
         proxy3.setMaxNumberOfConcurrentTestSessions(4);
         proxy3.setConfig(config3);
         proxy3.setCapabilityMatcher(new AutomationCapabilityMatcher());
 
-        Map<String, Object> capabilities = new HashMap<>();
-        capabilities.put(CapabilityType.BROWSER_NAME, "firefox");
-        TestSlot testSlotUsed = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
-        TestSlot testSlotNotUsed = new TestSlot(proxy, SeleniumProtocol.WebDriver, null, capabilities);
+        Map<String,Object> capabilities = new HashMap<>();
+        capabilities.put(CapabilityType.BROWSER_NAME,"firefox");
+        TestSlot testSlotUsed = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
+        TestSlot testSlotNotUsed = new TestSlot(proxy, SeleniumProtocol.WebDriver,null,capabilities);
         // Assign a session to the test slot
         testSlotUsed.getNewSession(capabilities);
         proxy.setMultipleTestSlots(testSlotUsed, 2);
         proxy.setMultipleTestSlots(testSlotNotUsed, 2);
 
-        TestSlot testSlotUsed2 = new TestSlot(proxy2, SeleniumProtocol.WebDriver, null, capabilities);
-        TestSlot testSlotNotUsed2 = new TestSlot(proxy2, SeleniumProtocol.WebDriver, null, capabilities);
+        TestSlot testSlotUsed2 = new TestSlot(proxy2, SeleniumProtocol.WebDriver,null,capabilities);
+        TestSlot testSlotNotUsed2 = new TestSlot(proxy2, SeleniumProtocol.WebDriver,null,capabilities);
         // Assign a session to the test slot
         testSlotUsed2.getNewSession(capabilities);
         proxy2.setMultipleTestSlots(testSlotUsed2, 2);
         proxy2.setMultipleTestSlots(testSlotNotUsed2, 2);
 
-        TestSlot testSlotUsed3 = new TestSlot(proxy3, SeleniumProtocol.WebDriver, null, capabilities);
-        TestSlot testSlotNotUsed3 = new TestSlot(proxy3, SeleniumProtocol.WebDriver, null, capabilities);
+        TestSlot testSlotUsed3 = new TestSlot(proxy3, SeleniumProtocol.WebDriver,null,capabilities);
+        TestSlot testSlotNotUsed3 = new TestSlot(proxy3, SeleniumProtocol.WebDriver,null,capabilities);
         // Assign a session to the test slot
         testSlotUsed3.getNewSession(capabilities);
         proxy3.setMultipleTestSlots(testSlotUsed3, 2);
         proxy3.setMultipleTestSlots(testSlotNotUsed3, 2);
         task.run();
 
-        int numRunning = 0;
-        int numExpired = 0;
-        for (int i = 0; i < nodes.size(); i++) {
-            if (nodes.get(i).getStatus() == AutomationDynamicNode.STATUS.RUNNING) {
+
+        int numRunning=0;
+        int numExpired=0;
+        for(int i =0;i<nodes.size();i++) {
+            if(nodes.get(i).getStatus() == AutomationDynamicNode.STATUS.RUNNING) {
                 numRunning++;
-            } else if (nodes.get(i).getStatus() == AutomationDynamicNode.STATUS.EXPIRED) {
+            } else if(nodes.get(i).getStatus() == AutomationDynamicNode.STATUS.EXPIRED) {
                 numExpired++;
             }
         }
-        Assert.assertEquals("Number of nodes still running is incorrect", 2, numRunning);
-        Assert.assertEquals("Only one node should have been marked expired", 1, numExpired);
+        Assert.assertEquals("Number of nodes still running is incorrect", 2,numRunning);
+        Assert.assertEquals("Only one node should have been marked expired", 1,numExpired);
     }
 
     @Test
     // Tests that a terminated node is removed from tracking after the configured amount of time
     public void testNodeRemovedAfterTime() {
-        MockAutomationNodeCleanupTask task =
-                new MockAutomationNodeCleanupTask(null, new MockVmManager(), new MockRequestMatcher());
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),new MockRequestMatcher());
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
-        AutomationDynamicNode node = new AutomationDynamicNode("testUuid", "dummyId", null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("testUuid","dummyId",null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
         AutomationContext.getContext().addNode(node);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.run();
-        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED,
-                node.getStatus());
+        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED, node.getStatus());
         task.run();
-        Assert.assertEquals("Node should be terminated as it was empty", AutomationDynamicNode.STATUS.TERMINATED,
-                node.getStatus());
+        Assert.assertEquals("Node should be terminated as it was empty", AutomationDynamicNode.STATUS.TERMINATED, node.getStatus());
         Assert.assertNotNull("Node should be tracked", AutomationContext.getContext().getNode(node.getInstanceId()));
         node.setEndDate(AutomationUtils.modifyDate(new Date(), -45, Calendar.MINUTE));
         task.run();
-        Assert.assertNull("Node should not be tracked after its been terminated for 30 minutes",
-                AutomationContext.getContext().getNode(node.getInstanceId()));
+        Assert.assertNull("Node should not be tracked after its been terminated for 30 minutes", AutomationContext.getContext().getNode(node.getInstanceId()));
     }
 
     @Test
     // Tests that a terminated node is removed from internal tracking as well as from Selenium's ProxySet
     public void testNodeRemovedFromInternalTrackingAndProxy() {
         ProxySet proxySet = new ProxySet(false);
-        MockAutomationNodeCleanupTask task =
-                new MockAutomationNodeCleanupTask(null, new MockVmManager(), new MockRequestMatcher());
+        MockAutomationNodeCleanupTask task = new MockAutomationNodeCleanupTask(null,new MockVmManager(),new MockRequestMatcher());
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxySet.add(proxy);
         task.setProxySet(proxySet);
-        AutomationDynamicNode node = new AutomationDynamicNode("testUuid", "dummyId", null, null,
-                AutomationUtils.modifyDate(new Date(), -56, Calendar.MINUTE), 10);
+        AutomationDynamicNode node = new AutomationDynamicNode("testUuid","dummyId",null,null,AutomationUtils.modifyDate(new Date(),-56, Calendar.MINUTE),10);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
-        GridNodeConfiguration config = new GridNodeConfiguration();
-        config.custom.put(AutomationConstants.INSTANCE_ID, node.getInstanceId());
+        Map<String,String> config = new HashMap<>();
+        config.put(AutomationConstants.INSTANCE_ID,node.getInstanceId());
         proxy.setConfig(config);
         AutomationContext.getContext().addNode(node);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         Assert.assertFalse("Proxy should not be removed yet", task.isProxyRemoved());
         task.run();
-        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED,
-                node.getStatus());
+        Assert.assertEquals("Status should change to expired first", AutomationDynamicNode.STATUS.EXPIRED, node.getStatus());
         task.run();
-        Assert.assertEquals("Node should be terminated as it was empty", AutomationDynamicNode.STATUS.TERMINATED,
-                node.getStatus());
-        Assert.assertNotNull("Node should still be tracked after its terminated",
-                AutomationContext.getContext().getNode(node.getInstanceId()));
+        Assert.assertEquals("Node should be terminated as it was empty", AutomationDynamicNode.STATUS.TERMINATED, node.getStatus());
+        Assert.assertNotNull("Node should still be tracked after its terminated", AutomationContext.getContext().getNode(node.getInstanceId()));
         Assert.assertTrue("Proxy should have been removed yet", task.isProxyRemoved());
     }
 }

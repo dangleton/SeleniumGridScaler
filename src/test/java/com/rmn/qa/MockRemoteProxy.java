@@ -50,7 +50,7 @@ public class MockRemoteProxy implements RemoteProxy {
     }
 
     public void setMultipleTestSlots(TestSlot testSlot, int count) {
-        for (int i = 0; i < count; i++) {
+        for(int i=0;i<count;i++) {
             testSlots.add(testSlot);
         }
     }
@@ -89,8 +89,8 @@ public class MockRemoteProxy implements RemoteProxy {
         return config;
     }
 
-    public void setConfig(GridNodeConfiguration config) {
-        this.config = config;
+    public void setConfig(Map<String, String> config) {
+        this.config.custom = config;
     }
 
     @Override
@@ -166,4 +166,5 @@ public class MockRemoteProxy implements RemoteProxy {
     public long getLastSessionStart() {
         return 0;
     }
+
 }

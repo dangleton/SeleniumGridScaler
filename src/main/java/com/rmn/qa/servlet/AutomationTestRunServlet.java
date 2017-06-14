@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.amazonaws.services.ec2.model.Instance;
+import com.google.common.collect.Lists;
 import com.rmn.qa.AutomationConstants;
 import com.rmn.qa.AutomationContext;
 import com.rmn.qa.AutomationDynamicNode;
@@ -58,10 +59,8 @@ import com.rmn.qa.task.AutomationRunCleanupTask;
 import com.rmn.qa.task.AutomationScaleNodeTask;
 
 /**
- * Servlet used to register new {@link com.rmn.qa.AutomationRunRequest runs} as well as delete existing
- * {@link com.rmn.qa.AutomationRunRequest runs}. New {@link com.rmn.qa.AutomationRunRequest runs} will automatically
- * spawn up new {@link com.rmn.qa.AutomationDynamicNode nodes} as needed
- * 
+ * Servlet used to register new {@link com.rmn.qa.AutomationRunRequest runs} as well as delete existing {@link com.rmn.qa.AutomationRunRequest runs}.
+ * New {@link com.rmn.qa.AutomationRunRequest runs} will automatically spawn up new {@link com.rmn.qa.AutomationDynamicNode nodes} as needed
  * @author mhardin
  */
 public class AutomationTestRunServlet extends RegistryBasedServlet implements RegistryRetriever {
@@ -82,23 +81,17 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
 
     /**
      * Constructs a test run servlet with customized values
-     * 
-     * @param registry
-     *            Selenium registry object to use from Grid
-     * @param initThreads
-     *            Set to true if you want the cleanup threads initialized
-     * @param ec2
-     *            EC2 implementation that you wish to use
-     * @param requestMatcher
-     *            RequestMatcher implementation you wish you use
+     * @param registry Selenium registry object to use from Grid
+     * @param initThreads Set to true if you want the cleanup threads initialized
+     * @param ec2 EC2 implementation that you wish to use
+     * @param requestMatcher RequestMatcher implementation you wish you use
      */
-    public AutomationTestRunServlet(Registry registry, boolean initThreads, VmManager ec2,
-            RequestMatcher requestMatcher) {
+    public AutomationTestRunServlet(Registry registry, boolean initThreads, VmManager ec2, RequestMatcher requestMatcher) {
         super(registry);
         setManageEc2(ec2);
         setRequestMatcher(requestMatcher);
         // Start up our cleanup thread that will cleanup unused runs
-        if (initThreads) {
+        if(initThreads) {
             this.initCleanupThreads();
         }
     }
@@ -109,32 +102,30 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationRunCleanupTask(this),
                 60L, 60L, TimeUnit.SECONDS);
         // Spin up a scheduled thread to clean up and terminate nodes that were spun up
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
-                new AutomationNodeCleanupTask(this, ec2, requestMatcher),
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationNodeCleanupTask(this,ec2,requestMatcher),
                 60L, 15L, TimeUnit.SECONDS);
         // Spin up a scheduled thread to register unregistered dynamic nodes (will happen if hub gets shut down)
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationOrphanedNodeRegistryTask(this),
                 1L, 5L, TimeUnit.MINUTES);
         // Spin up a scheduled thread to track nodes that are pending startup
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationPendingNodeRegistryTask(this),
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationPendingNodeRegistryTask(this, ec2),
                 60L, 15L, TimeUnit.SECONDS);
         // Spin up a scheduled thread to analyzed queued requests to scale up capacity
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationScaleNodeTask(this, ec2),
                 60L, 15L, TimeUnit.SECONDS);
         String instanceId = System.getProperty(AutomationConstants.INSTANCE_ID);
-        if (instanceId != null && instanceId.length() > 0) {
+        if(instanceId != null && instanceId.length() > 0) {
             log.info("Instance ID detected.  Hub termination thread will be started.");
-            Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
-                    new AutomationHubCleanupTask(this, ec2, instanceId),
+            Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationHubCleanupTask(this,ec2,instanceId),
                     5L, 1L, TimeUnit.MINUTES);
         } else {
             log.info("Hub is not a dynamic hub -- termination logic will not be started");
         }
         String runReaperThread = System.getProperty(AutomationConstants.REAPER_THREAD_CONFIG);
         // Reaper thread defaults to on unless specified not to run
-        if (!"false".equalsIgnoreCase(runReaperThread)) {
+        if(!"false".equalsIgnoreCase(runReaperThread)) {
             // Spin up a scheduled thread to terminate orphaned instances
-            Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationReaperTask(this, ec2),
+            Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new AutomationReaperTask(this,ec2),
                     1L, 15L, TimeUnit.MINUTES);
         } else {
             log.info("Reaper thread not running due to config flag.");
@@ -157,19 +148,20 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
      * {@inheritDoc}
      */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        this.doPost(request, response);
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        this.doPost(request,response);
     }
 
+
     /**
-     * Attempts to register a new run request with the server. Returns a 201 if the request can be fulfilled but AMIs
-     * must be started Returns a 202 if the request can be fulfilled Returns a 400 if the required parameters are not
-     * passed in. Returns a 409 if the server is at full node capacity
+     * Attempts to register a new run request with the server.
+     * Returns a 201 if the request can be fulfilled but AMIs must be started
+     * Returns a 202 if the request can be fulfilled
+     * Returns a 400 if the required parameters are not passed in.
+     * Returns a 409 if the server is at full node capacity
      */
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("text/html");
         response.setCharacterEncoding("UTF-8");
 
@@ -215,74 +207,56 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
 
         Integer threadCountRequested = Integer.valueOf(threadCount);
 
-        AutomationRunRequest runRequest = new AutomationRunRequest(uuid, threadCountRequested, browserRequested,
-                browserVersion, requestedPlatform);
+        AutomationRunRequest runRequest = new AutomationRunRequest(uuid, threadCountRequested, browserRequested, browserVersion, requestedPlatform);
         browserPlatformPairRequest = new BrowserPlatformPair(browserRequested, requestedPlatform);
 
-        log.info(String.format("Server request received.  Browser [%s] - Requested Node Count [%s] - Request UUID [%s]",
-                browserRequested, threadCountRequested, uuid));
+        log.info(String.format("Server request [%s] received.", runRequest));
         boolean amisNeeded;
-        boolean testExists = false;
-        int amiThreadsToStart = 0;
+        int amiThreadsToStart=0;
         int currentlyAvailableNodes;
         // Synchronize this block until we've added the run to our context for other potential threads to see
         synchronized (AutomationTestRunServlet.class) {
             int remainingNodesAvailable = AutomationContext.getContext().getTotalThreadsAvailable(getProxySet());
-            // If the number of nodes this grid hub can actually run is less than the number requested, this hub can not
-            // fulfill this run at this time
-            if (remainingNodesAvailable < runRequest.getThreadCount()) {
-                log.error(String.format(
-                        "Requested node count of [%d] could not be fulfilled due to hub limit. [%d] nodes available - Request UUID [%s]",
-                        threadCountRequested, remainingNodesAvailable, uuid));
-                response.sendError(HttpServletResponse.SC_CONFLICT,
-                        "Server cannot fulfill request due to configured node limit being reached.");
+            // If the number of nodes this grid hub can actually run is less than the number requested, this hub can not fulfill this run at this time
+            if(remainingNodesAvailable < runRequest.getThreadCount()) {
+                log.error(String.format("Requested node count of [%d] could not be fulfilled due to hub limit. [%d] nodes available - Request UUID [%s]", threadCountRequested, remainingNodesAvailable, uuid));
+                response.sendError(HttpServletResponse.SC_CONFLICT, "Server cannot fulfill request due to configured node limit being reached.");
                 return;
             }
             // Get the number of matching, free nodes to determine if we need to start up AMIs or not
-            currentlyAvailableNodes = requestMatcher.getNumFreeThreadsForParameters(getProxySet(), runRequest);
-            // If the number of available nodes is less than the total number requested, we will have to spin up AMIs in
-            // order to fulfill the request
+            currentlyAvailableNodes = requestMatcher.getNumFreeThreadsForParameters(getProxySet(),runRequest);
+            // If the number of available nodes is less than the total number requested, we will have to spin up AMIs in order to fulfill the request
             amisNeeded = currentlyAvailableNodes < threadCountRequested;
-            if (amisNeeded) {
-                // Get the difference which will be the number of additional nodes we need to spin up to supplement
-                // existing nodes
+            if(amisNeeded) {
+                // Get the difference which will be the number of additional nodes we need to spin up to supplement existing nodes
                 amiThreadsToStart = threadCountRequested - currentlyAvailableNodes;
             }
             // If the browser requested is not supported by AMIs, we need to not unnecessarily spin up AMIs
-            if (amisNeeded && !AutomationUtils.browserAndPlatformSupported(browserPlatformPairRequest)) {
-                response.sendError(HttpServletResponse.SC_GONE,
-                        "Request cannot be fulfilled and browser and platform is not supported by AMIs");
+            if(amisNeeded && !AutomationUtils.browserAndPlatformSupported(browserPlatformPairRequest)) {
+                response.sendError(HttpServletResponse.SC_GONE,"Request cannot be fulfilled and browser and platform is not supported by AMIs");
                 return;
             }
             // Add the run to our context so we can track it
-            AutomationRunRequest newRunRequest = new AutomationRunRequest(uuid, threadCountRequested, browserRequested,
-                    browserVersion, requestedPlatform);
+            AutomationRunRequest newRunRequest = new AutomationRunRequest(uuid, threadCountRequested, browserRequested, browserVersion, requestedPlatform);
             boolean addSuccessful = AutomationContext.getContext().addRun(newRunRequest);
-            if (!addSuccessful) {
-                // log.warn(String.format("Test run already exists for the same UUID [%s]", uuid));
-                // response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Test run already exists with the same
-                // UUID.");
-                // return;
-                testExists = true;
+            if(!addSuccessful) {
+                log.warn(String.format("Test run already exists for the same UUID [%s]", uuid));
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Test run already exists with the same UUID.");
+                return;
             }
         }
         if (amisNeeded) {
-            // Start up AMIs as that will be required only if the test does not exist.
-            if (!testExists) {
-                log.warn(String.format(
-                        "Insufficient nodes to fulfill request. New AMIs will be queued up. Requested [%s] - Available [%s] - Request UUID [%s]",
-                        threadCountRequested, currentlyAvailableNodes, uuid));
-                try {
-                    AutomationTestRunServlet.startNodes(ec2, uuid, amiThreadsToStart, browserRequested,
-                            requestedPlatform);
-                } catch (NodesCouldNotBeStartedException e) {
-                    // Make sure and de-register the run if the AMI startup was not successful
-                    AutomationContext.getContext().deleteRun(uuid);
-                    String throwableMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-                    String msg = "Nodes could not be started: " + throwableMessage;
-                    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
-                    return;
-                }
+            // Start up AMIs as that will be required
+            log.warn(String.format("Insufficient nodes to fulfill request. New AMIs will be queued up. Requested [%s] - Available [%s] - Request UUID [%s]", threadCountRequested, currentlyAvailableNodes, uuid));
+            try{
+                AutomationTestRunServlet.startNodes(ec2, uuid, amiThreadsToStart, browserRequested, requestedPlatform);
+            } catch(NodesCouldNotBeStartedException e) {
+                // Make sure and de-register the run if the AMI startup was not successful
+                AutomationContext.getContext().deleteRun(uuid);
+                String throwableMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                String msg = "Nodes could not be started: " + throwableMessage;
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,msg);
+                return;
             }
             // Return a 201 to let the caller know AMIs will be started
             response.setStatus(HttpServletResponse.SC_CREATED);
@@ -298,7 +272,7 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         log.warn("Call received to delete all instances");
-        Map<String, AutomationDynamicNode> nodes = AutomationContext.getContext().getNodes();
+        Map<String,AutomationDynamicNode> nodes = AutomationContext.getContext().getNodes();
         if (nodes != null && !CollectionUtils.isEmpty(nodes.keySet())) {
             Iterator<String> iterator = nodes.keySet().iterator();
             while (iterator.hasNext()) {
@@ -314,62 +288,59 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
 
     /**
      * Starts up AMIs
-     * 
      * @param threadCountRequested
      * @return
      */
-    public static void startNodes(VmManager ec2, String uuid, int threadCountRequested, String browser,
-            Platform platform) throws NodesCouldNotBeStartedException {
-        log.info(String.format("%d threads requested", threadCountRequested));
-        try {
+    public static List<AutomationDynamicNode> startNodes(VmManager ec2, String uuid,int threadCountRequested, String browser, Platform platform) throws NodesCouldNotBeStartedException {
+        log.info(String.format("%d threads requested",threadCountRequested));
+        try{
             String localhostname;
             // Try and get the IP address from the system property
             String runTimeHostName = System.getProperty(AutomationConstants.IP_ADDRESS);
-            try {
-                if (runTimeHostName == null) {
+            try{
+                if(runTimeHostName == null) {
                     log.warn("Host name could not be determined from system property.");
                 }
-                localhostname = (runTimeHostName != null) ? runTimeHostName : InetAddress.getLocalHost().getHostName();
+                localhostname = (runTimeHostName != null ) ? runTimeHostName : InetAddress.getLocalHost().getHostName();
             } catch (UnknownHostException e) {
-                log.error("Error parsing out host name", e);
+                log.error("Error parsing out host name",e);
                 throw new NodesCouldNotBeStartedException("Host name could not be determined", e);
             }
             // TODO Make matching logic better
             int numThreadsPerMachine;
-            if (AutomationUtils.lowerCaseMatch(BrowserType.CHROME, browser)) {
+            if(AutomationUtils.lowerCaseMatch(BrowserType.CHROME,browser)) {
                 numThreadsPerMachine = AwsVmManager.CHROME_THREAD_COUNT;
-                // TODO Browser Enum replacement here
-            } else if (AutomationUtils.lowerCaseMatch(BrowserType.IE, browser)
-                    || AutomationUtils.lowerCaseMatch(BrowserType.FIREFOX, browser)) {
-                numThreadsPerMachine = AwsVmManager.FIREFOX_THREAD_COUNT;
+                //TODO Browser Enum replacement here
+            } else if (AutomationUtils.lowerCaseMatch(BrowserType.IE,browser) || AutomationUtils.lowerCaseMatch(BrowserType.FIREFOX,browser)) {
+                numThreadsPerMachine= AwsVmManager.FIREFOX_IE_THREAD_COUNT;
             } else {
                 log.warn("Unsupported browser: " + browser);
                 throw new NodesCouldNotBeStartedException("Unsupported browser: " + browser);
             }
             int leftOver = threadCountRequested % numThreadsPerMachine;
             int machinesNeeded = (threadCountRequested / numThreadsPerMachine);
-            if (leftOver != 0) {
+            if(leftOver != 0) {
                 // Add the remainder
                 machinesNeeded++;
             }
-            log.info(String.format("%s nodes will be started for run [%s]", machinesNeeded, uuid));
-            List<Instance> instances =
-                    ec2.launchNodes(uuid, platform, browser, localhostname, machinesNeeded, numThreadsPerMachine);
+            log.info(String.format("%s nodes will be started for run [%s]",machinesNeeded,uuid));
+            List<Instance> instances = ec2.launchNodes(uuid, platform, browser, localhostname, machinesNeeded, numThreadsPerMachine);
             log.info(String.format("%d instances started", instances.size()));
             // Reuse the start date since all the nodes were created within the same request
             Date startDate = new Date();
-            for (Instance instance : instances) {
-                // Add the node as pending startup to our context so we can track it in
-                // AutomationPendingNodeRegistryTask
-                AutomationContext.getContext().addPendingNode(instance.getInstanceId());
+            List<AutomationDynamicNode> createdNodes = Lists.newArrayList();
+            for(Instance instance : instances) {
+                AutomationDynamicNode createdNode = new AutomationDynamicNode(uuid, instance.getInstanceId(), browser, platform, instance.getPrivateIpAddress(), startDate, numThreadsPerMachine, instance.getInstanceType());
+                // Add the node as pending startup to our context so we can track it in AutomationPendingNodeRegistryTask
+                AutomationContext.getContext().addPendingNode(createdNode);
                 log.info("Node instance id: " + instance.getInstanceId());
-                AutomationContext.getContext().addNode(
-                        new AutomationDynamicNode(uuid, instance.getInstanceId(), browser, platform,
-                                instance.getPrivateIpAddress(), startDate, numThreadsPerMachine));
+                AutomationContext.getContext().addNode(createdNode);
+                createdNodes.add(createdNode);
             }
-        } catch (Exception e) {
-            log.error("Error trying to start nodes: ", e);
-            throw new NodesCouldNotBeStartedException("Error trying to start nodes", e);
+            return createdNodes;
+        } catch(Exception e) {
+            log.error("Error trying to start nodes: ",e);
+            throw new NodesCouldNotBeStartedException("Error trying to start nodes",e);
         }
     }
 
@@ -380,9 +351,9 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
 
     // Run this for local testing
     public static void main(String args[]) {
-        try {
+        try{
             GridLauncherV3.main(args);
-        } catch (Exception e) {
+        }catch(Exception e) {
             log.error("Error starting up grid: " + e);
         }
     }

@@ -15,10 +15,11 @@ package com.rmn.qa.task;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.Test;
 import org.openqa.grid.internal.ProxySet;
-import org.openqa.grid.internal.utils.configuration.GridNodeConfiguration;
 import org.openqa.selenium.Platform;
 
 import com.rmn.qa.AutomationCapabilityMatcher;
@@ -50,29 +51,29 @@ public class AutomationOrphanedNodeRegistryTaskTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxySet.add(proxy);
-        GridNodeConfiguration config = new GridNodeConfiguration();
+        Map<String,String> config = new HashMap<>();
         String instanceId = "instanceId";
-        String uuid = "testUuid";
+        String uuid="testUuid";
         int threadCount = 10;
         String browser = "firefox";
         Platform os = Platform.LINUX;
-        config.custom.put(AutomationConstants.INSTANCE_ID, instanceId);
-        config.custom.put(AutomationConstants.UUID, uuid);
-        config.custom.put(AutomationConstants.CONFIG_MAX_SESSION, Integer.toString(threadCount));
-        config.custom.put(AutomationConstants.CONFIG_BROWSER, browser);
-        config.custom.put(AutomationConstants.CONFIG_OS, os.toString());
-        config.custom.put(AutomationConstants.CONFIG_CREATED_DATE, AwsVmManager.NODE_DATE_FORMAT.format(new Date()));
+        config.put(AutomationConstants.INSTANCE_ID,instanceId);
+        config.put(AutomationConstants.UUID,uuid);
+        //config.put(AutomationConstants.CONFIG_MAX_SESSION, threadCount);
+        proxy.getConfig().maxSession = threadCount;
+        config.put(AutomationConstants.CONFIG_BROWSER, browser);
+        config.put(AutomationConstants.CONFIG_OS, os.toString());
+        config.put(AutomationConstants.CONFIG_CREATED_DATE, AwsVmManager.NODE_DATE_FORMAT.format(new Date()));
         proxy.setConfig(config);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.setProxySet(proxySet);
-        Assert.assertNull("Node should not be registered before the task runs",
-                AutomationContext.getContext().getNode(instanceId));
+        Assert.assertNull("Node should not be registered before the task runs",AutomationContext.getContext().getNode(instanceId));
         task.run();
         AutomationDynamicNode existingNode = AutomationContext.getContext().getNode(instanceId);
-        Assert.assertNotNull("Node should exist after the task has run", existingNode);
-        Assert.assertEquals("UUID should match", uuid, existingNode.getUuid());
-        Assert.assertEquals("Browser should match", browser, existingNode.getBrowser());
-        Assert.assertEquals("Thread count should match", threadCount, existingNode.getNodeCapacity());
+        Assert.assertNotNull("Node should exist after the task has run",existingNode);
+        Assert.assertEquals("UUID should match", uuid,existingNode.getUuid());
+        Assert.assertEquals("Browser should match", browser,existingNode.getBrowser());
+        Assert.assertEquals("Thread count should match", threadCount,existingNode.getNodeCapacity());
         Assert.assertEquals("OS should match", os, existingNode.getPlatform());
     }
 
@@ -83,33 +84,31 @@ public class AutomationOrphanedNodeRegistryTaskTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxySet.add(proxy);
-        GridNodeConfiguration config = new GridNodeConfiguration();
+        Map<String,String> config = new HashMap<>();
         String instanceId = "instanceId";
-        String uuid = "testUuid";
+        String uuid="testUuid";
         int threadCount = 10;
         String browser = "firefox";
         Platform os = Platform.LINUX;
-        config.custom.put(AutomationConstants.INSTANCE_ID, instanceId);
-        config.custom.put(AutomationConstants.UUID, "fake");
-        config.custom.put(AutomationConstants.CONFIG_MAX_SESSION, "1");
-        config.custom.put(AutomationConstants.CONFIG_BROWSER, "fake");
-        config.custom.put(AutomationConstants.CONFIG_OS, "fake");
-        config.custom.put(AutomationConstants.CONFIG_CREATED_DATE, AwsVmManager.NODE_DATE_FORMAT.format(new Date()));
+        config.put(AutomationConstants.INSTANCE_ID,instanceId);
+        config.put(AutomationConstants.UUID,"fake");
+        //config.put(AutomationConstants.CONFIG_MAX_SESSION, 1);
+        proxy.getConfig().maxSession = 1;
+        config.put(AutomationConstants.CONFIG_BROWSER, "fake");
+        config.put(AutomationConstants.CONFIG_OS, "fake");
+        config.put(AutomationConstants.CONFIG_CREATED_DATE, AwsVmManager.NODE_DATE_FORMAT.format(new Date()));
         proxy.setConfig(config);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.setProxySet(proxySet);
-        AutomationDynamicNode existingNode =
-                new AutomationDynamicNode(uuid, instanceId, browser, os, new Date(), threadCount);
+        AutomationDynamicNode existingNode = new AutomationDynamicNode(uuid,instanceId,browser,os,new Date(),threadCount);
         AutomationContext.getContext().addNode(existingNode);
-        Assert.assertNotNull("Node should be registered before the task runs",
-                AutomationContext.getContext().getNode(instanceId));
+        Assert.assertNotNull("Node should be registered before the task runs",AutomationContext.getContext().getNode(instanceId));
         task.run();
         AutomationDynamicNode newNode = AutomationContext.getContext().getNode(instanceId);
-        Assert.assertNotNull("Node should still exist after the task has run", newNode);
+        Assert.assertNotNull("Node should still exist after the task has run",newNode);
         Assert.assertEquals("UUID should match the previously existing node", uuid, newNode.getUuid());
-        Assert.assertEquals("Browser should match the previously existing node", browser, newNode.getBrowser());
-        Assert.assertEquals("Thread count should match the previously existing node", threadCount,
-                newNode.getNodeCapacity());
+        Assert.assertEquals("Browser should match the previously existing node", browser,newNode.getBrowser());
+        Assert.assertEquals("Thread count should match the previously existing node", threadCount, newNode.getNodeCapacity());
         Assert.assertEquals("OS should match the previously existing node", os, newNode.getPlatform());
     }
 
@@ -120,24 +119,23 @@ public class AutomationOrphanedNodeRegistryTaskTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxySet.add(proxy);
-        GridNodeConfiguration config = new GridNodeConfiguration();
-        String uuid = "testUuid";
+        Map<String,String> config = new HashMap<>();
+        String uuid="testUuid";
         int threadCount = 10;
         String browser = "firefox";
         String os = "linux";
-        config.custom.put(AutomationConstants.UUID, uuid);
-        config.custom.put(AutomationConstants.CONFIG_MAX_SESSION, Integer.toString(threadCount));
-        config.custom.put(AutomationConstants.CONFIG_BROWSER, browser);
-        config.custom.put(AutomationConstants.CONFIG_OS, os);
-        config.custom.put(AutomationConstants.CONFIG_CREATED_DATE, AwsVmManager.NODE_DATE_FORMAT.format(new Date()));
+        config.put(AutomationConstants.UUID,uuid);
+        //config.put(AutomationConstants.CONFIG_MAX_SESSION, threadCount);
+        proxy.getConfig().maxSession = threadCount;
+        config.put(AutomationConstants.CONFIG_BROWSER, browser);
+        config.put(AutomationConstants.CONFIG_OS, os);
+        config.put(AutomationConstants.CONFIG_CREATED_DATE, AwsVmManager.NODE_DATE_FORMAT.format(new Date()));
         proxy.setConfig(config);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.setProxySet(proxySet);
-        Assert.assertEquals("Node should not be registered before the task runs", 0,
-                AutomationContext.getContext().getNodes().size());
+        Assert.assertEquals("Node should not be registered before the task runs",0,AutomationContext.getContext().getNodes().size());
         task.run();
-        Assert.assertEquals("Node should still not be registered after the task runs", 0,
-                AutomationContext.getContext().getNodes().size());
+        Assert.assertEquals("Node should still not be registered after the task runs",0,AutomationContext.getContext().getNodes().size());
     }
 
     @Test
@@ -146,11 +144,9 @@ public class AutomationOrphanedNodeRegistryTaskTest extends BaseTest {
         MockAutomationOrphanedNodeRegistryTask task = new MockAutomationOrphanedNodeRegistryTask(null);
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
-        Assert.assertEquals("Node should not be registered before the task runs", 0,
-                AutomationContext.getContext().getNodes().size());
+        Assert.assertEquals("Node should not be registered before the task runs",0,AutomationContext.getContext().getNodes().size());
         task.run();
-        Assert.assertEquals("Node should still not be registered after the task runs", 0,
-                AutomationContext.getContext().getNodes().size());
+        Assert.assertEquals("Node should still not be registered after the task runs",0,AutomationContext.getContext().getNodes().size());
     }
 
     @Test
@@ -159,11 +155,9 @@ public class AutomationOrphanedNodeRegistryTaskTest extends BaseTest {
         MockAutomationOrphanedNodeRegistryTask task = new MockAutomationOrphanedNodeRegistryTask(null);
         ProxySet proxySet = new ProxySet(false);
         task.setProxySet(proxySet);
-        Assert.assertEquals("Node should not be registered before the task runs", 0,
-                AutomationContext.getContext().getNodes().size());
+        Assert.assertEquals("Node should not be registered before the task runs",0,AutomationContext.getContext().getNodes().size());
         task.run();
-        Assert.assertEquals("Node should still not be registered after the task runs", 0,
-                AutomationContext.getContext().getNodes().size());
+        Assert.assertEquals("Node should still not be registered after the task runs",0,AutomationContext.getContext().getNodes().size());
     }
 
     @Test
@@ -173,28 +167,27 @@ public class AutomationOrphanedNodeRegistryTaskTest extends BaseTest {
         ProxySet proxySet = new ProxySet(false);
         MockRemoteProxy proxy = new MockRemoteProxy();
         proxySet.add(proxy);
-        GridNodeConfiguration config = new GridNodeConfiguration();
+        Map<String,String> config = new HashMap<>();
         String instanceId = "instanceId";
-        String uuid = "testUuid";
+        String uuid="testUuid";
         int threadCount = 10;
         String browser = "firefox";
         String os = "linux";
-        config.custom.put(AutomationConstants.INSTANCE_ID, instanceId);
-        config.custom.put(AutomationConstants.UUID, uuid);
-        config.custom.put(AutomationConstants.CONFIG_MAX_SESSION, Integer.toString(threadCount));
-        config.custom.put(AutomationConstants.CONFIG_BROWSER, browser);
-        config.custom.put(AutomationConstants.CONFIG_OS, os);
+        config.put(AutomationConstants.INSTANCE_ID,instanceId);
+        config.put(AutomationConstants.UUID,uuid);
+        //config.put(AutomationConstants.CONFIG_MAX_SESSION, threadCount);
+        proxy.getConfig().maxSession = threadCount;
+        config.put(AutomationConstants.CONFIG_BROWSER, browser);
+        config.put(AutomationConstants.CONFIG_OS, os);
 
         DateFormat badDateFormat = new SimpleDateFormat("MM HH:mm:ss");
-        config.custom.put(AutomationConstants.CONFIG_CREATED_DATE, badDateFormat.format(new Date()));
+        config.put(AutomationConstants.CONFIG_CREATED_DATE, badDateFormat.format(new Date()));
         proxy.setConfig(config);
         proxy.setCapabilityMatcher(new AutomationCapabilityMatcher());
         task.setProxySet(proxySet);
-        Assert.assertNull("Node should not be registered before the task runs",
-                AutomationContext.getContext().getNode(instanceId));
+        Assert.assertNull("Node should not be registered before the task runs",AutomationContext.getContext().getNode(instanceId));
         task.run();
-        Assert.assertNull("Node should still not be registered after the task runs",
-                AutomationContext.getContext().getNode(instanceId));
+        Assert.assertNull("Node should still not be registered after the task runs",AutomationContext.getContext().getNode(instanceId));
     }
 
 }
