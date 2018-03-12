@@ -11,11 +11,13 @@
  */
 package com.rmn.qa.aws;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
+import java.util.Scanner;
 import java.util.TimeZone;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -41,6 +44,7 @@ import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicSessionCredentials;
 import com.amazonaws.services.ec2.AmazonEC2Client;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
+import com.amazonaws.services.ec2.model.IamInstanceProfileSpecification;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.InstanceState;
 import com.amazonaws.services.ec2.model.InstanceStateChange;
@@ -50,6 +54,9 @@ import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
 import com.amazonaws.services.ec2.model.TerminateInstancesResult;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.rmn.qa.AutomationConstants;
 import com.rmn.qa.AutomationUtils;
 import com.rmn.qa.BrowserPlatformPair;
@@ -91,8 +98,7 @@ public class AwsVmManager implements VmManager {
             credentials = getCredentials();
             client = new AmazonEC2Client(credentials);
         } catch (IllegalArgumentException e) {
-            log.info("Falling back to IAM roles for authorization since no credentials provided in system properties",
-                    e);
+            log.info("Falling back to IAM roles for authorization since no credentials provided in system properties");
             client = new AmazonEC2Client();
         }
         AwsVmManager.setRegion(client, awsProperties, region);
@@ -216,6 +222,12 @@ public class AwsVmManager implements VmManager {
             runRequest.withSubnetId(subnetKey);
         }
 
+        String iamProfileKey = getIamProfileArn();
+        if (iamProfileKey != null) {
+            log.info("Setting iam profile: " + iamProfileKey);
+            runRequest.withIamInstanceProfile(new IamInstanceProfileSpecification().withArn(iamProfileKey));
+        }
+
         String securityGroupKey = awsProperties.getProperty(region + "_security_group");
         if (securityGroupKey != null) {
 
@@ -250,6 +262,33 @@ public class AwsVmManager implements VmManager {
 
         associateTags(new Date().toString(), instances);
         return instances;
+    }
+
+    private String getIamProfileArn() {
+        InputStream httpIn = null;
+        String ret = null;
+        try {
+            String urlOfFile = "http://169.254.169.254/latest/meta-data/iam/info";
+            httpIn = new BufferedInputStream(new URL(urlOfFile).openStream());
+            String jsonLine = new Scanner(httpIn, "UTF-8").useDelimiter("\\A").next();
+            // check the http connection before we do anything to the fs
+            // prep saving the file
+            // {
+            // "Code" : "Success",
+            // "LastUpdated" : "2018-03-08T21:35:06Z",
+            // "InstanceProfileArn" :
+            // "arn:aws:iam::843619860512:instance-profile/gridscaler-dev-AppInstanceProfile-OA7Z63A65QQY",
+            // "InstanceProfileId" : "AIPAIGMUYYKLFKSGL3UZK"
+            // }
+            JsonElement jelement = new JsonParser().parse(jsonLine);
+            JsonObject jobject = jelement.getAsJsonObject();
+            ret = jobject.get("InstanceProfileArn").getAsString();
+        } catch (Exception e) {
+            System.err.println("Error getting instance profile: " + e.toString());
+        } finally {
+            IOUtils.closeQuietly(httpIn);
+        }
+        return ret;
     }
 
     /**
@@ -508,7 +547,7 @@ public class AwsVmManager implements VmManager {
 
         // Pass in the created date so we can know when this node was spun up
         nodeConfig = nodeConfig.replaceAll("<CREATED_DATE>", AwsVmManager.NODE_DATE_FORMAT.format(createdDate));
-        String hubUrl = "http://"+hostName+":4444";
+        String hubUrl = "http://" + hostName + ":4444";
         nodeConfig = nodeConfig.replaceFirst("<HOST_NAME>", hubUrl);
         return nodeConfig;
     }
