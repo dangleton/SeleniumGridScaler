@@ -260,7 +260,8 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
             boolean addSuccessful = AutomationContext.getContext().addRun(newRunRequest);
             if (!addSuccessful) {
                 log.warn(String.format("Test run already exists for the same UUID [%s]", uuid));
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Test run already exists with the same UUID.");
+//                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Test run already exists with the same UUID.");
+                response.setStatus(HttpServletResponse.SC_CREATED);
                 return;
             }
         }
